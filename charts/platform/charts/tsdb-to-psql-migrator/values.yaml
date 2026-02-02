@@ -188,7 +188,7 @@ secondaryTimescaledb:
 image:
   registry: docker.io
   repository: harness/tsdb-to-psql-migrator-signed
-  tag: 1.0.0-soumik-migration-5-19f825
+  tag: 1.0.0-soumik-migration-5-bc3b0b
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   digest: ""
