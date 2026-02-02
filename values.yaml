@@ -101,20 +101,20 @@ global:
       userKey: "username"
     timescaledb:
       ## - key name within secret containing certificates
-      certKey: "cert"
+      certKey: ""
       ## - secret name containing timescaledb certificates
-      certName: "tsdb-cert"
+      certName: ""
       # --  provide host name for timescaledb
       hosts:
-        - timescaledb-single-chart.databases.svc.cluster.local:5432
+        - 10.116.194.3:5432
       ## - set this to false if you want to use external timescaledb cluster
       installed: false
       ## - key within secret containing password
       passwordKey: "password"
       ## - secret name containing external timescaledb credentials
-      secretName: "timescaledb-secret"
+      secretName: "postgres-secret"
       ## - set this to true if you want to enabled external timescaledb ssl traffic
-      sslEnabled: false
+      sslEnabled: true
       ## - key within secret containing username
       userKey: "username"
     minio:
