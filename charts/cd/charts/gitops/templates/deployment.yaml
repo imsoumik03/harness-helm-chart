@@ -93,7 +93,7 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12 }}
-            {{- if .Values.global.database.timescaledb.sslEnabled }}
+            {{- if and .Values.global.database.timescaledb.sslEnabled .Values.global.database.timescaledb.certName .Values.global.database.timescaledb.certKey }}
             - name: timescaledb-cert
               mountPath: /opt/harness/svc
             {{- end }}
@@ -101,7 +101,7 @@ spec:
       terminationGracePeriodSeconds: 30
       volumes:
         {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
-        {{- if .Values.global.database.timescaledb.sslEnabled }}
+        {{- if and .Values.global.database.timescaledb.sslEnabled .Values.global.database.timescaledb.certName .Values.global.database.timescaledb.certKey }}
         - name: timescaledb-cert
           secret:
             secretName: {{ .Values.global.database.timescaledb.certName }}

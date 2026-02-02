@@ -96,7 +96,7 @@ spec:
           {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
           {{- end }}
           {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 10 }}
-          {{- if .Values.global.database.timescaledb.sslEnabled }}
+          {{- if and .Values.global.database.timescaledb.sslEnabled .Values.global.database.timescaledb.certName .Values.global.database.timescaledb.certKey }}
           - name: timescaledb-cert
             mountPath: /opt/harness/svc
           {{- end }}
@@ -107,7 +107,7 @@ spec:
       {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
       {{- end }}
       {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
-      {{- if .Values.global.database.timescaledb.sslEnabled }}
+      {{- if and .Values.global.database.timescaledb.sslEnabled .Values.global.database.timescaledb.certName .Values.global.database.timescaledb.certKey }}
       - name: timescaledb-cert
         secret:
           secretName: {{ .Values.global.database.timescaledb.certName }}
