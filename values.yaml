@@ -101,9 +101,9 @@ global:
       userKey: "username"
     timescaledb:
       ## - key name within secret containing certificates
-      certKey: ""
+      certKey: "ca.crt"
       ## - secret name containing timescaledb certificates
-      certName: ""
+      certName: "timescale-client-tls"
       # --  provide host name for timescaledb
       hosts:
         - 10.116.194.3:5432
