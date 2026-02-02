@@ -1,0 +1,10 @@
+apiVersion: v2
+appVersion: 0.0.80500
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart for Kubernetes
+name: idp-service
+type: application
+version: 1.35.5

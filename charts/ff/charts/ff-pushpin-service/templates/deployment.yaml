@@ -1,0 +1,187 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ff-pushpin-service.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: ff-pushpin-service
+    {{- include "ff-pushpin-service.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.maxSurge }}
+      maxUnavailable: {{ .Values.maxUnavailable }}
+  selector:
+    matchLabels:
+      app: ff-pushpin-service
+      {{- include "ff-pushpin-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        app: ff-pushpin-service
+        {{- include "ff-pushpin-service.labels" . | nindent 8 }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "ff-pushpin-service.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ff-pushpin-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: {{ include "ff-pushpin-service.name" . }}
+          image: {{ include "ff-pushpin-service.pushpinImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - containerPort: 7999
+            - containerPort: 443
+            - containerPort: 5560
+            - containerPort: 5561
+            - containerPort: 5562
+            - containerPort: 5563
+            - containerPort: 5555
+            - containerPort: 9000
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+          - configMapRef:
+              name: {{ include "ff-pushpin-service.name" . }}
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /health
+              port: 7999
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe:
+            exec:
+              command:
+                - cat
+                - /opt/pushpin/run/pushpin/pushpin-handler.pid
+            failureThreshold: 3
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            exec:
+              command:
+                - cat
+                - /opt/pushpin/run/pushpin/pushpin-handler.pid
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          volumeMounts:
+            - mountPath: /opt/pushpin
+              name: pushpin-opt-dir
+            - mountPath: /usr/lib/pushpin
+              name: pushpin-usr-dir
+        - name: {{ include "ff-pushpin-service.name" . }}-worker
+          image: {{ include "ff-pushpin-service.pushpinworkerImage" . }}
+          imagePullPolicy: {{ .Values.pushpinworker.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: ff-worker-http
+              containerPort: 5000
+              protocol: "TCP"
+          resources:
+              {{- toYaml .Values.pushpinworker.resources | nindent 12 }}
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10 }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cf" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCACertPath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 10 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cf" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USER" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_USER_PASSWORD" ) | indent 10 }}
+            {{- if .Values.global.cfPostgresEnabled }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS" "sslModeVariableName" "SSL_MODE" "handleSSLModeDisable" true) | indent 10 }}
+            {{- else }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS" "sslModeVariableName" "SSL_MODE" "handleSSLModeDisable" true) | indent 10 }}
+            {{- end }}
+          envFrom:
+          - configMapRef:
+              name: {{ include "ff-pushpin-service.name" . }}-worker
+          readinessProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /health
+              port: 5000
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 5000
+              scheme: HTTP
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          startupProbe:
+            failureThreshold: 6
+            httpGet:
+              path: /health
+              port: 5000
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            successThreshold: 1
+            timeoutSeconds: 1
+          volumeMounts:
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cf") | nindent 10 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - {{ include "ff-pushpin-service.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - emptyDir:
+            sizeLimit: 100Mi
+          name: pushpin-opt-dir
+        - emptyDir:
+            sizeLimit: 100Mi
+          name: pushpin-usr-dir
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cf") | indent 8 }}

@@ -1,0 +1,178 @@
+{{- if and .Values.global.database.mongo.installed .Values.mongodbupgrades.mongoFCVUpgrade.enabled .Release.IsUpgrade }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "upgrade-fcv-mongo-{{ randAlphaNum 6 | lower }}"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Release.Name }}
+  annotations:
+    "helm.sh/hook": pre-upgrade              # Executes job BEFORE chart upgrade begins
+    "helm.sh/hook-weight": "0"               # Sets execution priority (lower numbers run first)
+    "helm.sh/hook-delete-policy": "before-hook-creation"  # Only deletes old jobs before creating new ones, but keeps completed jobs
+    {{- if .Values.mongodbupgrades.mongoFCVUpgrade.ignoreFailure }}
+    "helm.sh/hook-failed-policy": "ignore"   # If enabled, chart continues even if FCV upgrade fails
+    {{- end }}
+spec:
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: {{ .Values.mongodbupgrades.mongoFCVUpgrade.ttlSecondsAfterFinished | default 900 }}  # Configurable TTL with default of 15 min
+  template:
+    spec:
+      {{- include "common.images.pullSecrets" (dict "images" (list .Values.mongodbupgrades.mongoFCVUpgrade.image) "global" .Values.global) | nindent 6 }}
+      serviceAccountName: mongodb-replicaset-chart
+      {{- with .Values.mongodbupgrades.mongoFCVUpgrade.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongodbupgrades.mongoFCVUpgrade.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongodbupgrades.mongoFCVUpgrade.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+      - name: mongo-dynamic-upgrade
+        securityContext:
+          runAsUser: 1001
+          runAsNonRoot: true
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.mongodbupgrades.mongoFCVUpgrade.image "global" .Values.global) }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "====== Starting MongoDB FCV Upgrade Job ======"
+          echo "$(date): Job initiated"
+          
+          # Setup error handling to ensure script always exits successfully
+          set +e  # Don't exit on error
+          echo "Error handling set up - script will continue on errors"
+          trap 'echo "ERROR: Script error occurred at line $LINENO. Exiting gracefully."; exit 0' ERR
+
+          # Enable cleaner logging format with timestamps
+          log_ts() {
+            echo "$(date +'%Y-%m-%d %H:%M:%S') [${1}] ${2}"
+          }
+
+          log_ts "INFO" "Environment diagnosis:"
+          log_ts "INFO" "Pod name: $HOSTNAME"
+          log_ts "INFO" "MongoDB server time: $(date)"
+          # Not logging the MongoDB URI as it may contain credentials
+          
+          log_ts "INFO" "Connecting to MongoDB to determine server version..."
+          # Get the current MongoDB server version
+          server_version=$(mongosh --quiet --eval 'db.version()' $MONGO_URI 2>/dev/null) 
+          if [ $? -ne 0 ]; then
+            log_ts "ERROR" "Cannot connect to MongoDB to determine version"
+            log_ts "ERROR" "Check MongoDB connectivity and credentials"
+            log_ts "ERROR" "Exiting with graceful exit code"
+            exit 0
+          fi
+          
+          major_version=$(echo $server_version | cut -d '.' -f 1)
+          log_ts "INFO" "MongoDB Server Version: $server_version (Major Version: $major_version)"
+          log_ts "INFO" "Successfully connected to MongoDB server"
+
+          # Enhanced logging for template value resolution - without showing actual sensitive values
+          log_ts "DEBUG" "Chart configuration:"
+          log_ts "DEBUG" "FCV upgrade enabled: {{ .Values.mongodbupgrades.mongoFCVUpgrade.enabled }}"
+          log_ts "DEBUG" "MongoDB image tag: {{ .Values.mongodbupgrades.mongoFCVUpgrade.image.tag }}"
+          
+          {{- if .Values.mongodbupgrades.mongoFCVUpgrade.desiredFCV }}
+          desired_fcv="{{ .Values.mongodbupgrades.mongoFCVUpgrade.desiredFCV | toString }}"
+          log_ts "INFO" "Using explicitly configured desiredFCV from chart values: $desired_fcv"
+          {{- else }}
+          desired_fcv="${major_version}.0"
+          log_ts "INFO" "No explicit desiredFCV configured, defaulting to server major version: $desired_fcv"
+          {{- end }}
+          log_ts "INFO" "Target FCV: $desired_fcv"
+
+          log_ts "INFO" "Querying current MongoDB Feature Compatibility Version..."
+          # Get the current feature compatibility version
+          current_fcv=$(mongosh --quiet --eval 'db.adminCommand({getParameter: 1, featureCompatibilityVersion: 1}).featureCompatibilityVersion.version' $MONGO_URI 2>/dev/null)
+          if [ $? -ne 0 ]; then
+            log_ts "ERROR" "Failed to determine current FCV"
+            log_ts "ERROR" "MongoDB server may not support FCV or credentials insufficient"
+            log_ts "ERROR" "Exiting with graceful exit code"
+            exit 0
+          fi
+          log_ts "INFO" "Current FCV: $current_fcv"
+
+          # Check if the current FCV matches the desired FCV
+          if [ "$current_fcv" != "$desired_fcv" ]; then
+            log_ts "INFO" "FCV upgrade needed: $current_fcv → $desired_fcv"
+            log_ts "INFO" "Validating version compatibility for FCV upgrade..."
+            
+            # Validate if the desired FCV is supported by this MongoDB version
+            if [ "$major_version" -eq "6" ] && [ "$desired_fcv" = "7.0" ]; then
+              log_ts "ERROR" "Version compatibility check failed"
+              log_ts "WARNING" "MongoDB 6.0 cannot set FCV to 7.0. Must upgrade MongoDB server first."
+              log_ts "INFO" "Skipping FCV upgrade - MongoDB server version must match or exceed desired FCV."
+              log_ts "INFO" "Current FCV remains: $current_fcv"
+              exit 0
+            else
+              log_ts "INFO" "Version compatibility check passed"
+              log_ts "INFO" "Executing FCV upgrade command..."
+              
+              # Use appropriate command format based on MongoDB version
+              if [ "$major_version" -ge "7" ]; then
+                log_ts "INFO" "MongoDB 7.0+ detected - using command with confirm parameter"
+                # MongoDB 7.0+ requires confirm parameter
+                log_ts "INFO" "Running: db.adminCommand({setFeatureCompatibilityVersion: '$desired_fcv', confirm: true})"
+                upgrade_result=$(mongosh --eval "db.adminCommand({setFeatureCompatibilityVersion: '$desired_fcv', confirm: true})" $MONGO_URI 2>/dev/null) || {
+                  log_ts "ERROR" "Failed to upgrade FCV to $desired_fcv";
+                  log_ts "ERROR" "Command output: $upgrade_result";
+                  log_ts "ERROR" "MongoDB server reported an error during FCV upgrade";
+                  log_ts "ERROR" "Exiting with graceful exit code";
+                  exit 0;
+                }
+                log_ts "INFO" "Command output: $upgrade_result"
+              else
+                log_ts "INFO" "MongoDB 6.0 or earlier detected - using standard command"
+                # MongoDB 6.0 and earlier don't have confirm parameter
+                log_ts "INFO" "Running: db.adminCommand({setFeatureCompatibilityVersion: '$desired_fcv'})"
+                upgrade_result=$(mongosh --eval "db.adminCommand({setFeatureCompatibilityVersion: '$desired_fcv'})" $MONGO_URI 2>/dev/null) || {
+                  log_ts "ERROR" "Failed to upgrade FCV to $desired_fcv";
+                  log_ts "ERROR" "Command output: $upgrade_result";
+                  log_ts "ERROR" "MongoDB server reported an error during FCV upgrade";
+                  log_ts "ERROR" "Exiting with graceful exit code";
+                  exit 0;
+                }
+                log_ts "INFO" "Command output: $upgrade_result"
+              fi
+              
+              log_ts "INFO" "Verifying FCV upgrade success..."
+              verify_fcv=$(mongosh --quiet --eval 'db.adminCommand({getParameter: 1, featureCompatibilityVersion: 1}).featureCompatibilityVersion.version' $MONGO_URI 2>/dev/null)
+              log_ts "INFO" "FCV after upgrade attempt: $verify_fcv"
+              
+              if [ "$verify_fcv" = "$desired_fcv" ]; then
+                log_ts "INFO" "SUCCESS: FCV successfully upgraded from $current_fcv to $desired_fcv"
+              else
+                log_ts "WARNING" "FCV verification shows $verify_fcv instead of expected $desired_fcv"
+                log_ts "WARNING" "FCV upgrade may have been delayed or failed silently"
+              fi
+            fi
+          else
+            log_ts "INFO" "FCV is already at $desired_fcv. No upgrade needed."
+          fi
+          
+          log_ts "INFO" "FCV check/upgrade process completed at $(date)"
+          echo "====== MongoDB FCV Upgrade Job Finished ======"
+          exit 0
+        env:
+        - name: MONGO_USER
+          valueFrom:
+            secretKeyRef:
+              name: harness-secrets
+              key: mongodbUsername
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-replicaset-chart
+              key: mongodb-root-password
+        - name: MONGO_URI
+          value: 'mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@{{ .Values.mongodb.fullnameOverride }}-0.{{ .Values.mongodb.fullnameOverride }}/?authSource=admin'
+        {{- with .Values.mongodbupgrades.mongoFCVUpgrade.resources }}
+        resources: {{- toYaml . | nindent 10 }}
+        {{- end }}
+      restartPolicy: Never
+  backoffLimit: 3
+{{- end }}

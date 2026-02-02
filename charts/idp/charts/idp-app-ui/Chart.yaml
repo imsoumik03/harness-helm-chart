@@ -1,0 +1,14 @@
+apiVersion: v2
+dependencies:
+- name: common
+  repository: https://charts.bitnami.com/bitnami
+  tags:
+  - bitnami-common
+  version: 2.x.x
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart for deploying a Backstage application
+name: idp-app-ui
+type: application
+version: 1.31.4

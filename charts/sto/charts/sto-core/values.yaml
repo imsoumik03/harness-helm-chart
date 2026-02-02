@@ -1,0 +1,414 @@
+global:
+  fips: false
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  kubeVersion: ""
+  loadbalancerURL: ""
+  imagePullSecrets: []
+  commonAnnotations: {}
+  commonLabels: {}
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - database name used to connect to a specific Postgres database
+      databaseName: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  ## -- initContainer for Harness application waits
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+  monitoring:
+    enabled: true
+    port: 8889
+    path: /metrics
+#    managedPlatform: ""
+
+corsAllowedOrigins: ""
+# Default values for sto-core.
+# This is a YAML-formatted file.
+replicaCount: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+retryMigrations: true
+image:
+  registry: docker.io
+  repository: harness/stocore-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.173.2"
+  digest: ""
+  imagePullSecrets: []
+# Postgres secret value and key
+postgresPassword:
+  name: postgres
+  key: postgres-password
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+database:
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+postgres:
+  enabled: false
+  initialStoCoreDb: true
+  database: ""
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: "14.18.0-debian-12-r0"
+    digest: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+migrationPostgres:
+  enabled: false
+  database: ""
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: "14.18.0-debian-12-r0"
+    digest: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 4000
+virtualService:
+  annotations: {}
+  objects:
+    - name: sto-core-apis
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/sto/'
+ingress:
+  objects:
+    - name: sto-core
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/sto(/|$)(.*)'
+resources:
+  limits:
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 768Mi
+autoscaling:
+  enabled: false
+  targetCPU: 75
+  targetMemory: 65
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+additionalConfigs: {}
+secrets:
+  default:
+    APP_TOKEN_JWT_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    APP_INTERNAL_TOKEN_JWT_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+    APP_NG_MANAGER_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    APP_PIPELINE_SERVICE_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+  kubernetesSecrets:
+    - secretName: "harness-secrets"
+      keys:
+        APP_HARNESS_TOKEN: "stoAppHarnessToken"
+    - secretName: ""
+      keys:
+        APP_TOKEN_JWT_SECRET: ""
+        APP_INTERNAL_TOKEN_JWT_SECRET: ""
+        APP_NG_MANAGER_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          APP_TOKEN_JWT_SECRET:
+            name: ""
+            property: ""
+          APP_INTERNAL_TOKEN_JWT_SECRET:
+            name: ""
+            property: ""
+          APP_HARNESS_TOKEN:
+            name: ""
+            property: ""
+          APP_NG_MANAGER_SECRET:
+            name: ""
+            property: ""
+config:
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  APP_REDIS_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" "true" ) }}'
+  APP_ENABLE_EVENT_LISTENER: "true"
+  APP_ACL_URL: 'http://access-control.{{ .Release.Namespace }}.svc.cluster.local:9006/api'
+  APP_AI_SERVICE_URL: 'http://genai-service.{{ .Release.Namespace }}.svc.cluster.local:8000'
+  APP_AUDIT_URL: 'http://platform-service.{{ .Release.Namespace }}.svc.cluster.local:9005/api'
+  APP_GITNESS_URL: 'http://code-api.{{ .Release.Namespace }}.svc.cluster.local:80'
+  APP_NG_MANAGER_URL: 'http://ng-manager.{{ .Release.Namespace }}.svc.cluster.local:7090'
+  APP_MANAGER_URL: 'http://harness-manager.{{ .Release.Namespace }}.svc.cluster.local:9090/api'
+  APP_TICKET_SERVICE_URL: 'http://ticket-service.{{ .Release.Namespace }}.svc.cluster.local:4000/api'
+  APP_PIPELINE_SERVICE_URL: 'http://pipeline-service.{{ .Release.Namespace }}.svc.cluster.local:12001/api'
+  APP_CORS_ALLOWED_ORIGINS: '{{ .Values.corsAllowedOrigins | default .Values.global.loadbalancerURL }}'
+  APP_DATABASE_RETRY_MIGRATION: "1"
+  GOMEMLIMIT: 350MiB # ~70% of max memory
+  APP_ENABLE_UI: "true"
+  APP_ENABLE_AUDIT_TRAIL: "true"
+  APP_NVD_URL: https://services.nvd.nist.gov/rest
+  APP_AI_PROVIDER: openai
+  APP_AI_MODEL: gpt-4o-mini
+  APP_AI_TEMPERATURE: "0.2"
+  APP_AI_TOP_P: "0.8"
+  APP_AI_TOP_K: "10"
+rbac:
+  rules: []
+pdb:
+  create: false
+probes:
+  startupProbe:
+    httpGet:
+      path: /api/v2/system/health
+      port: http
+    periodSeconds: 5
+    failureThreshold: 180
+  livenessProbe:
+    httpGet:
+      path: /api/v2/system/version
+      port: http
+    periodSeconds: 15
+    failureThreshold: 5
+  readinessProbe:
+    httpGet:
+      path: /api/v2/system/health
+      port: http
+    periodSeconds: 1
+    failureThreshold: 1
+refidCache:
+  enabled: true
+  image:
+    registry: docker.io
+    repository: harness/refid-cache
+    tag: latest
+    digest: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 100m
+      memory: 1Gi
+    limits:
+      memory: 1.5Gi
+      ephemeral-storage: 10Gi

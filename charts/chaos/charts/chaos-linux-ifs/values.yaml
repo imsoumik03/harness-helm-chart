@@ -1,0 +1,385 @@
+# Default values for chaos-manager
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  loadbalancerURL: "test@harness.io"
+  airgap: false
+  commonAnnotations: {}
+  commonLabels: {}
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+    port: 8889
+    path: /metrics
+  ha: false
+  opa:
+    enabled: false
+  crd:
+    enabled: true
+  cd:
+    # -- Enable to install CD
+    enabled: true
+  istio:
+    enableRegexRoutes: false
+    # -- create virtualServices objects
+    enabled: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  # Enable if using ingress objects
+  ingress:
+    enabled: false
+    loadBalancerIP: '0.0.0.0'
+    className: "harness"
+    loadBalancerEnabled: true
+    hosts:
+      - ''
+    tls:
+      enabled: false
+      secretName: harness-ssl
+    objects:
+      annotations: {}
+    nginx:
+      # -- Create Nginx Controller.  True will deploy a controller into your cluster
+      create: true
+    defaultbackend:
+      # -- Create will deploy a default backend into your cluster
+      create: true
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    mongo:
+      installed: true
+      protocol: ""
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - dummy.net
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      ## - set this to false if you want to use external redis cluster
+      installed: true
+      # --  provide host name for redis
+      hosts:
+        - "redis-url"
+      ## - key within secret containing password
+      passwordKey: "password"
+      ## - secret name containing external redis credentials
+      secretName: "redis-user-pass"
+      ## - key within secret containing username
+      userKey: "username"
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+externalSecretsLoader:
+  configName: "chaos-linux-ifs-config"
+## Platform Settings
+platform:
+  harness-manager:
+    featureFlags:
+      OPA: "OPA_PIPELINE_GOVERNANCE"
+      ADDITIONAL: "CHAOS_ENABLED"
+replicaCount: 2
+progressDeadlineSeconds: 600
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+terminationGracePeriodSeconds: 30
+image:
+  registry: docker.io
+  #repository: chaosnative/harness-smp-chaos-delegate-server
+  repository: harness/smp-chaos-linux-infra-server-signed
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.72.2"
+  digest: ""
+  #imagePullSecrets: ["chaos-regcred-secret"]
+probeSourceImage:
+  image:
+    registry: docker.io
+    repository: harness/source-probe
+    tag: "main-latest"
+configmap: {}
+metrics:
+  metricsPort: "8889"
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "chaos-linux-ifs-sa"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 4000
+  targetport: 4000
+  grpcport: 5000
+  grpctargetport: 5000
+virtualService:
+  annotations: {}
+  objects:
+    - name: chaos-linux-ifs-apis
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/chaos/lserver/api/'
+          backend:
+            service:
+              name: chaos-linux-ifs-service
+ingress:
+  objects:
+    - name: chaos-linux-ifs
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/chaos/lserver/api(/|$)(.*)'
+          backend:
+            service:
+              name: chaos-linux-ifs-service
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+database:
+  mongo:
+    harnesschaos:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    cache:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+secrets:
+  default:
+    CHAOS_LINUX_IFS_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    NG_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    JWT_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+    JWT_IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    LOG_SERVICE_TOKEN: "c76e567a-b341-404d-a8dd-d9738714eb82"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        CHAOS_LINUX_IFS_JWT_SECRET: ""
+        NG_JWT_SECRET: ""
+        JWT_SECRET: ""
+        JWT_IDENTITY_SERVICE_SECRET: ""
+        LOG_SERVICE_TOKEN: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          CHAOS_LINUX_IFS_JWT_SECRET:
+            name: ""
+            property: ""
+          NG_JWT_SECRET:
+            name: ""
+            property: ""
+          JWT_SECRET:
+            name: ""
+            property: ""
+          JWT_IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+          LOG_SERVICE_TOKEN:
+            name: ""
+            property: ""
+config:
+  LOG_SERVICE_ENABLED: "true"
+  LOG_TOKEN_RENEWAL_INTERVAL_IN_HOUR: "1"
+  REDIS_CACHE_SSL_ENABLED: "false"
+  REDIS_CACHE_NAMESPACE: ""
+  REDIS_CACHE_CERT_PATH: ""
+  REDIS_CACHE_DATABASE: "0"
+  LOG_SERVICE_ENDPOINT: http://log-service:8079
+  REDIS_CACHE_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache") }}'
+  PROBE_SOURCE_IMAGE: '{{ include "chaos-linux-ifs.probeSourceImage" . }}'
+  METRIC_PORT: '{{ .Values.metrics.metricsPort }}'
+  PROBE_SERVICE_ACCOUNT_NAME: '{{ include "chaos-linux-ifs.serviceAccountName" . }}'
+pdb:
+  create: false

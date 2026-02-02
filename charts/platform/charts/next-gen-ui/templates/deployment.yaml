@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "next-gen-ui.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "next-gen-ui.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "next-gen-ui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ include "next-gen-ui.name" . }}
+        {{- include "next-gen-ui.selectorLabels" . | nindent 8 }}
+         {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "next-gen-ui.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "next-gen-ui.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      initContainers:
+        {{- include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 8 }}
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+        {{ include "harnesscommon.initContainer.setupWritable" (dict "root" . "mounts" (list (dict "sourcePath" "/opt/nextgenui" "destinationPath" "/shared/volume" "volumeName" "nextgenui-opt") (dict "sourcePath" "/etc/nginx" "destinationPath" "/shared/nginx" "volumeName" "nginx-etc"))) | nindent 8 }}
+        {{- end }}
+      containers:
+      - name: next-gen-ui
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+        command: {{- include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 12 }}
+        args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "sh /opt/entrypoint.sh" "secrets_loader_cmd" "true") | nindent 12 }}
+        {{- end }}          
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.probes "context" $) | nindent 8 }}
+        ports:
+        - name: ng-ui-port
+          containerPort: {{ .Values.service.targetport }}
+          protocol: "TCP"
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        env:
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 8 }}
+          {{- end }}
+        envFrom:
+        - configMapRef:
+            name: next-gen-ui
+        {{- if .Values.lifecycleHooks }}
+        lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+        {{- end }}
+        volumeMounts:
+        {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 12 }}
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{- include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "nextgenui-opt" "mountPath" "/opt/nextgenui") (dict "name" "nginx-etc" "mountPath" "/etc/nginx") (dict "name" "tmp" "mountPath" "/tmp") (dict "name" "var-log-nginx" "mountPath" "/var/log/nginx")) ) | nindent 12 }}
+        {{- end }}
+        {{- if .Values.extraVolumeMounts }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+        {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "next-gen-ui.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 8 }}
+      {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+        {{- include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "nextgenui-opt" "type" "emptyDir") (dict "name" "nginx-etc" "type" "emptyDir") (dict "name" "tmp" "type" "emptyDir") (dict "name" "var-log-nginx" "type" "emptyDir")) ) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}

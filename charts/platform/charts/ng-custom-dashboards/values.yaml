@@ -1,0 +1,330 @@
+# Default values for ng-custom-dashboards
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  airgap: "false"
+  commonAnnotations: {}
+  commonLabels: {}
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    objects:
+      annotations: {}
+    enabled: false
+    className:
+    hosts: []
+    tls:
+      enabled: false
+      secretName: ""
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    virtualService:
+      gateways:
+      hosts:
+  imagePullSecrets: []
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  database:
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+replicaCount: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+progressDeadlineSeconds: 600
+database:
+  redis:
+    cache:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+image:
+  registry: docker.io
+  repository: harness/dashboard-service-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.98.0"
+  digest: ""
+  imagePullSecrets: []
+config:
+  # -- Required: domain name of your looker instance, this must be accessible by users in your organisation
+  lookerPubDomain: ''
+  # -- Required: HTTP scheme used, either http or https
+  lookerPubScheme: 'https'
+  # -- scheme used for your looker install, http or https
+  lookerScheme: 'http'
+  # -- hostname of your looker install
+  lookerHost: 'hrns-looker-api'
+  # -- The name of the Looker Project used for the environment
+  lookerProjectName: 'spoke-smp'
+  # -- Prefix of the Looker Project
+  lookerProjectPrefix: 'spoke-'
+  # -- port of your looker install
+  lookerPort: '19999'
+  # -- folder ID of the 'CUSTOMER' folder in looker
+  customerFolderId: '6'
+  # -- folder ID of the 'OOTB' folder in looker
+  ootbFolderId: '7'
+  # -- group ID for API users
+  apiGroupId: '3'
+  # -- group ID for embedded users
+  embeddedGroupId: '4'
+  # -- the identifier for the environment
+  env: 'SMP'
+  # -- hostname of your redis install
+  redisHost: 'harness-redis-master'
+  # -- port of your redis install
+  redisPort: '6379'
+  # -- used to enable Redis Sentinel support
+  redisSentinel: 'true'
+  # -- list of sentinel URLs, example host:port,host:port
+  redisSentinelUrls: ''
+  # -- name of the Redis Sentinel master
+  redisSentinelMasterName: 'harness-redis'
+  # -- extra startup arguments for the gunicorn server
+  gunicornCmdArgs: '--worker-tmp-dir /dev/shm --statsd-host=localhost:9125 --statsd-prefix=dashboards'
+  # -- if you have configured Looker models with a prefix enter it here
+  modelPrefix: 'SMP_'
+  # -- looker sdk param
+  lookerApiVersion: '4.0'
+  # -- looker sdk param
+  lookerTimeout: '120'
+  # -- looker sdk param
+  lookerVerifySsl: 'false'
+  # -- time in seconds between cache reloads
+  cacheReloadFrequency: '600'
+  # -- time in seconds before cache reload locks are automatically released
+  redisLockTimeout: '570'
+additionalConfigs: {}
+statsd:
+  image:
+    registry: docker.io
+    repository: harness/statsd-exporter
+    pullPolicy: IfNotPresent
+    tag: 1.0-prometheus-busybox-1
+    digest: ""
+monitoring:
+  port: 9102
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+rbac:
+  rules: []
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 5000
+virtualService:
+  annotations: {}
+  objects:
+    - name: ng-custom-dashboards
+      pathMatchType: prefix
+      paths:
+        - path: '/dashboard'
+ingress:
+  annotations: {}
+  objects:
+    - name: ng-custom-dashboards
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /dashboard/$2
+        nginx.ingress.kubernetes.io/use-regex: 'true'
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/dashboard(/|$)(.*)'
+          pathType: Prefix
+resources:
+  limits:
+    memory: 1536Mi
+  requests:
+    cpu: 1
+    memory: 768Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+secrets:
+  default:
+    AUTH_ACCESS_CONTROL_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    AUTH_CCM_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    AUTH_CG_MANAGER_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    AUTH_NG_MANAGER_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    AUTH_IDENTITY_SERVICE_SECRET: HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU=
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        AUTH_ACCESS_CONTROL_SECRET: ""
+        AUTH_CCM_SECRET: ""
+        AUTH_CG_MANAGER_SECRET: ""
+        AUTH_NG_MANAGER_SECRET: ""
+        AUTH_IDENTITY_SERVICE_SECRET: ""
+    - secretName: "harness-looker-secrets"
+      keys:
+        LOOKERSDK_CLIENT_ID: "lookerClientId"
+        LOOKERSDK_CLIENT_SECRET: "lookerClientSecret"
+        SECRET: "lookerEmbedSecret"
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          AUTH_ACCESS_CONTROL_SECRET:
+            name: ""
+            property: ""
+          AUTH_CCM_SECRET:
+            name: ""
+            property: ""
+          AUTH_CG_MANAGER_SECRET:
+            name: ""
+            property: ""
+          AUTH_NG_MANAGER_SECRET:
+            name: ""
+            property: ""
+          AUTH_IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+pdb:
+  create: false

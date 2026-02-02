@@ -1,0 +1,9 @@
+dependencies:
+- name: common
+  repository: https://charts.bitnami.com/bitnami
+  version: 2.31.4
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.4.10
+digest: sha256:25bf0d56588b1b7ff97d61ab4035569e2bab00f06a107c42767c6185d905f0b2
+generated: "2026-01-09T19:57:22.84793+05:30"

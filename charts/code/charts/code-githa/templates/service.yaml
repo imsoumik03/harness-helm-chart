@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "code-githa.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "code-githa.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: githa-grpc
+    port: {{ .Values.config.CODE_GITHA_GRPC_SERVER_PORT }}
+    targetPort: {{ .Values.config.CODE_GITHA_GRPC_SERVER_PORT }}
+    protocol: TCP
+  - name: githa-http
+    port: {{ .Values.config.CODE_GITHA_HTTP_SERVER_PORT }}
+    targetPort: {{ .Values.config.CODE_GITHA_HTTP_SERVER_PORT }}
+    protocol: TCP
+  selector:
+    app: {{ include "code-githa.name" . }}

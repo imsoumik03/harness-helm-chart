@@ -1,0 +1,36 @@
+apiVersion: v1
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}
+
+  {{- if .Values.global.opa.enabled }}
+  OPA_SERVER_BASEURL: 'http://policy-mgmt.{{ .Release.Namespace }}.svc.cluster.local:3000/'
+  OPA_SERVER_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+  {{- end }}
+  CE_NEXTGEN_CLIENT_BASEURL: "http://nextgen-ce.{{ .Release.Namespace }}.svc.cluster.local:6340/ccm/api/"
+  {{ include "harnesscommon.harnessfunctions.java17flags" (dict "context" $) | nindent 2 }}
+  {{- if .Values.additionalConfigs }}
+  {{- toYaml .Values.additionalConfigs | nindent 2 }}
+  {{- end }}
+  {{- if and .Values.proxy.enabled .Values.proxy.host }}
+  USE_PROXY: {{ .Values.proxy.enabled | quote }}
+  PROXY_HOST: {{ .Values.proxy.host | quote }}
+  PROXY_PORT: {{ .Values.proxy.port | quote }}
+  {{- end }}
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
+  {{- include "harnesscommon.logging.setFileLogging" . | nindent 2 }}
+  {{- include "harnesscommon.secretsLoader.configContent" (dict "ctx" $ "databaseSecrets" (list 
+    (dict "dbtype" "mongo" "usernamesecrets" (list "NOTIFICATIONS_MONGO_USER" "AUDITS_MONGO_USER" "RESOURCEGROUPS_MONGO_USER") "passwordsecrets" (list "NOTIFICATIONS_MONGO_PASSWORD" "AUDITS_MONGO_PASSWORD" "RESOURCEGROUPS_MONGO_PASSWORD"))
+    (dict "dbtype" "redis" "usernamesecrets" (list "LOCK_CONFIG_REDIS_USERNAME" "EVENTS_FRAMEWORK_REDIS_USERNAME") "passwordsecrets" (list "LOCK_CONFIG_REDIS_PASSWORD" "EVENTS_FRAMEWORK_REDIS_PASSWORD"))
+  )) | nindent 2}}
+
+kind: ConfigMap
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: platform-service
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}

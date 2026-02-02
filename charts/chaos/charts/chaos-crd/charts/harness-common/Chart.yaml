@@ -1,0 +1,6 @@
+apiVersion: v2
+appVersion: 0.0.0
+description: Helm Common library for Harness Helm Charts
+name: harness-common
+type: library
+version: 1.4.10

@@ -1,0 +1,35 @@
+{{- if .Values.pdb.create }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: ff-pushpin-service
+  namespace: {{ .Release.Namespace }}
+  {{- if .Values.global.commonLabels }}
+  labels:
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- $globalPdbMinAvailable := dig "pdb" "minAvailable" "" .Values.global }}
+  {{- $globalPdbMaxUnavailable := dig "pdb" "maxUnavailable" "" .Values.global }}
+  {{- $minAvailable := .Values.pdb.minAvailable | default $globalPdbMinAvailable | default "50%" }}
+  {{- $maxUnavailable := .Values.pdb.maxUnavailable | default $globalPdbMaxUnavailable }}
+  {{- if $minAvailable }}
+  {{- if kindIs "string" $minAvailable }}
+  minAvailable: {{ $minAvailable | quote }}
+  {{- else }}
+  minAvailable: {{ $minAvailable }}
+  {{- end }}
+  {{- else if $maxUnavailable }}
+  {{- if kindIs "string" $maxUnavailable }}
+  maxUnavailable: {{ $maxUnavailable | quote }}
+  {{- else }}
+  maxUnavailable: {{ $maxUnavailable }}
+  {{- end }}
+  {{- end }}
+  selector:
+   matchLabels:
+    app: ff-pushpin-service
+{{- end }}

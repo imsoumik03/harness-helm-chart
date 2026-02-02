@@ -1,0 +1,43 @@
+{{- $serviceName := "gitrpc" }}
+
+{{- $disksConfig := list }} 
+
+{{- range .Values.harnessDisks.disks }}
+{{- if eq .servicename $serviceName }}
+{{- $disksConfig = .disks_config }}
+{{- end }} 
+{{- end }}
+
+{{- if $disksConfig }}
+{{- $index := 0 }}
+{{- range $disksConfig }}
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ $.Release.Namespace }}-{{ $serviceName }}-{{ .zone }}-{{ .zone_disk_index }}
+  annotations:
+    "helm.sh/resource-policy": keep
+spec:
+  storageClassName: {{ include "code-gitrpc.name" $ }}
+  capacity:
+    storage: {{ .capacity }}
+  accessModes:
+    - ReadWriteOnce
+  claimRef:
+    namespace: {{ $.Release.Namespace }}
+    name: repos-{{ include "code-gitrpc.name" $ }}-{{ $index }}
+  csi:
+    driver: pd.csi.storage.gke.io
+    volumeHandle: {{ .handler }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: topology.gke.io/zone
+          operator: In
+          values:
+          - {{ .zone }}
+---
+{{- $index = add $index 1 }}
+{{- end}}
+{{- end}}

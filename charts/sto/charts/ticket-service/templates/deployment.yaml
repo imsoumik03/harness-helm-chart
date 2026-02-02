@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ticket-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ticket-service.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{.Values.maxSurge}}
+      maxUnavailable: {{.Values.maxUnavailable}}
+  selector:
+    matchLabels:
+      {{- include "ticket-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ticket-service.selectorLabels" . | nindent 8 }}
+    spec:
+      {{ include "ticket-service.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ticket-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if .Values.global.database.postgres.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8}}
+        {{- end }}
+        {{- if .Values.postgres.initDbHook}}
+        - name: init-db
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.postgres.image "global" .Values.global) }}
+          env: {{- include "harnesscommon.dbconnection.postgresEnv" . | nindent 10 }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "SELECT 'CREATE DATABASE \"{{ .Values.postgres.database }}\"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ .Values.postgres.database }}');\gexec" | psql {{ include "harnesscommon.dbconnection.postgresConnection" (dict "database" "postgres" "args" .Values.global.database.postgres.extraArgs "context" $) }}{{ default "" .Values.postgres.seedDatabase }}
+              echo "CREATE SCHEMA IF NOT EXISTS public" | psql {{ include "harnesscommon.dbconnection.postgresConnection" (dict "database" .Values.postgres.database "args" "" "context" $) }}
+        {{- end }}
+      containers:
+        - name: ticket-service
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10}}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "APP_REDIS_SSL_ENABLED" "sslCACertPath" "APP_REDIS_SSL_CA_CERT_PATH")) | indent 10 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "APP_REDIS_USERNAME" "passwordVariableName" "APP_REDIS_PASSWORD" ) | indent 10 }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 10 }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER_MIGRATION" "passwordVariableName" "POSTGRES_PASSWORD_MIGRATION" "localDBCtx" .Values.migrationPostgres "additionalCtxIdentifier" "migration-postgres") | indent 10 }}
+          - name: APP_DATABASE_DATASOURCE
+            value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "ticket-service" "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD" ) | quote }}
+          - name: APP_DB_MIGRATION_DATASOURCE
+            value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "ticket-service" "userVariableName" "POSTGRES_USER_MIGRATION" "passwordVariableName" "POSTGRES_PASSWORD_MIGRATION" "localDBCtx" .Values.migrationPostgres ) | quote }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12 }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+          envFrom:
+          - configMapRef:
+              name: ticket-service
+          ports:
+            - name: http
+              containerPort: {{.Values.service.port}}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /api/system/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/system/health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - ticket-service
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}

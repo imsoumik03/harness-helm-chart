@@ -1,0 +1,5 @@
+{{- include "harnesscommon.v1.renderIngress" (dict "ctx" $) }}
+
+{{- if .Values.splitDeployment.enabled }}
+  {{- include "harnesscommon.v1.renderIngress" (dict "ingress" .Values.pms.ingress "ctx" $) }}
+{{- end }}

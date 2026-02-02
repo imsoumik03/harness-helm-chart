@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ff-db-migrations.fullname" . }}-{{ lower ( randAlphaNum 6 ) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ff-db-migrations.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- if .Values.commonAnnotations }}
+    annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+  {{- if .Values.global.commonAnnotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  ttlSecondsAfterFinished: {{ .Values.ttlSecondsAfterFinished }}
+  backoffLimit: {{ .Values.backoffLimit }}
+  template:
+    metadata:
+      {{- if or .Values.global.commonAnnotations .Values.podAnnotations }}
+      annotations:
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- if or .Values.global.commonLabels .Values.podLabels }}
+      labels:
+        {{- if .Values.global.commonLabels }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+    spec:
+      {{ include "ff-db-migrations.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ff-db-migrations.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.isPostgresDB }}
+      initContainers:
+      - name: {{ include "ff-db-migrations.name" . }}-create-db
+        image: postgres:alpine3.18
+        imagePullPolicy: IfNotPresent
+        env:
+          {{- if .Values.global.cfPostgresEnabled }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "PGPASSWORD") | indent 8 }}
+          {{- else }}
+          {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "PGPASSWORD") | indent 8 }}
+          {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "ff-db-migrations.name" . }}
+        command: [
+          "/bin/sh",
+          "-c",
+          "psql -w -h $DB_HOST -U $DB_USER -d $DB_DEFAULT_DB -tc \"SELECT 1 FROM pg_database WHERE datname = '{{.Values.config.PG_DB_NAME}}'\" | grep -q 1 || psql -w -h $DB_HOST -U $DB_USER -c \"CREATE DATABASE {{.Values.config.PG_DB_NAME}}\""
+        ]
+      {{- end }}
+      containers:
+      - name: {{ include "ff-db-migrations.name" . }}
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+        env:
+          {{- if and .Values.global.cfPostgresEnabled .Values.isPostgresDB }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS") | indent 8 }}
+          {{- else }}
+          {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS") | indent 8 }}
+          {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "ff-db-migrations.name" . }}
+      restartPolicy: Never
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{ toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{ toYaml . | indent 8 }}
+      {{- end }}
+      {{- if .Values.tolerations }}
+      tolerations: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.tolerations "context" $) | nindent 8 }}
+      {{- end }}

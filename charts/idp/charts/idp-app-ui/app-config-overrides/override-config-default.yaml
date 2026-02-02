@@ -1,0 +1,128 @@
+app:
+  title: Scaffolded Backstage App
+  namespace: default
+  baseUrl: {{ .Values.app_base_url }}
+organization:
+  name: My Company
+
+backend:
+  # Used for enabling authentication, secret is shared by all backend plugins
+  # See https://backstage.io/docs/tutorials/backend-to-backend-auth for
+  # information on the format
+  auth:
+    keys:
+      - secret: ${BACKEND_SECRET}
+  baseUrl: {{ .Values.backend_base_url }}
+  listen:
+    port: 7007
+    # Uncomment the following host directive to bind to all IPv4 interfaces and
+    # not just the baseUrl hostname.
+    # host: 0.0.0.0
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+    # Content-Security-Policy directives follow the Helmet format: https://helmetjs.github.io/#reference
+    # Default Helmet Content-Security-Policy values can be removed by setting the key to false
+  cors:
+    origin: {{ .Values.backend_cors_origin }}
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+  # This is for local development only, it is not recommended to use this in production
+  # The production database configuration is stored in app-config.production.yaml
+  database:
+    #     client: better-sqlite3
+    #     connection: ':memory:'
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+    prefix: {{ .Values.idp_account_id }}_
+  cache:
+    store: memory
+  # workingDirectory: /tmp # Use this to configure a working directory for the scaffolder, defaults to the OS temp-dir
+
+permission:
+  enabled: true
+
+integrations:
+  github:
+    - host: github.com
+      # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
+      # about setting up the GitHub integration here: https://backstage.io/docs/getting-started/configuration#setting-up-a-github-integration
+      token: tbd
+      # ${GITHUB_TOKEN}
+    ### Example for how to add your GitHub Enterprise instance using the API:
+    # - host: ghe.example.net
+    #   apiBaseUrl: https://ghe.example.net/api/v3
+    #   token: ${GHE_TOKEN}
+proxy:
+  '/test1':
+    target: 'https://example1.com'
+    changeOrigin: true
+
+techdocs:
+  builder: 'local' # Alternatives - 'external'
+  generator:
+    runIn: 'local' # Alternatives - 'local'
+    mkdocs:
+      legacyCopyReadmeMdToIndexMd: true
+  publisher:
+    type: 'googleGcs' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation for using alternatives.
+    googleGcs:
+      bucketName: {{ .Values.gcs_bucket_name }}
+      bucketRootPath: {{ .Values.idp_account_id }}
+      credentials:
+        $file: '/app/gcs/idp-play.json'
+
+#techdocs:
+#  builder: 'local' # Alternatives - 'external'
+#  generator:
+#    runIn: 'docker' # Alternatives - 'local'
+#  publisher:
+#    type: 'local' # Alternatives - 'googleGcs' or 'awsS3'. Read documentation
+
+auth:
+  # see https://backstage.io/docs/auth/ to learn about auth providers
+  providers: { harness: {}, harnessToken: {} }
+
+scaffolder:
+  # see https://backstage.io/docs/features/software-templates/configuration for software template options
+  defaultAuthor: {}
+
+catalog:
+  orphanStrategy: delete
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Resource, Location, Domain, Template, Group]
+
+backstagePermissions:
+  permissions: ${PERMISSIONS}
+  userGroup: ${USERGROUP}
+grafana:
+  domain: https://test.grafana.io/
+  unifiedAlerting: false
+
+opsgenie:
+  domain: https://myorganization.app.opsgenie.com/
+
+jfrog:
+  artifactory:
+    url: 'https://your-jfrog-artifactory-instance.com'
+    proxyPath: '/artifactory-proxy/'
+
+sysdig:
+  endpoint: example.sysdig.com
+  backlink: https://example.sysdig.com/
+
+copilot:
+  host: github.com
+  scheduler:
+    frequency:
+      cron: '0 2 * * *'  # Run at 2 AM daily
+    timeout:
+      minutes: 15
+    initialDelay:
+      seconds: 15

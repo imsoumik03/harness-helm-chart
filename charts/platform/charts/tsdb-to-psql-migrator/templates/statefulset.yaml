@@ -1,0 +1,204 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tsdb-to-psql-migrator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tsdb-to-psql-migrator.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: "tsdb-to-psql-migrator"
+  replicas: {{ .Values.replicaCount }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "tsdb-to-psql-migrator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.global.commonAnnotations .Values.podAnnotations .Values.global.monitoring.enabled}}
+      annotations:
+      {{- if .Values.global.monitoring.enabled }}
+      {{- include "tsdb-to-psql-migrator.prometheusAnnotations" . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+    {{- end }}
+      labels:
+        app: tsdb-to-psql-migrator
+        {{- include "tsdb-to-psql-migrator.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "tsdb-to-psql-migrator.pullSecrets" . | nindent 6 }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName }}
+      {{- end }}
+      serviceAccountName: {{ include "tsdb-to-psql-migrator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      initContainers:
+        {{- if .Values.global.database.postgres.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8}}
+        {{- end }}
+        {{- if .Values.global.database.timescaledb.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-timescale" "appName" "timescaledb-single-chart") | nindent 8}}
+        {{- end }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-ng-manager" "appName" "ng-manager") | nindent 8}}
+      containers:
+        - name: tsdb-to-psql-migrator
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: 
+            - /bin/sh
+            - -c
+            - |
+              if bash /scripts/migrate.sh; then
+                sleep infinity
+              fi
+          envFrom:
+            - configMapRef:
+                name: tsdb-to-psql-migrator
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" .) | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "SECONDARY_TIMESCALEDB_USERNAME" "passwordVariableName" "SECONDARY_TIMESCALEDB_PASSWORD" "localTimescaleDBCtx" .Values.secondaryTimescaledb "additionalCtxIdentifier" "secondary-timescaledb") | indent 12 }}
+            - name: TIMESCALEDB_URI
+              value: {{ include "harnesscommon.dbconnectionv2.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "postgres" "context" $) }}
+            - name: SECONDARY_TIMESCALEDB_URI
+              value: {{ include "harnesscommon.dbconnectionv3.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "postgres" "context" $ "localTimescaleDBCtx" .Values.secondaryTimescaledb ) }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USERNAME" "passwordVariableName" "POSTGRES_PASSWORD") | indent 12 }}
+            - name: POSTGRESDB_URI
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "protocol" "jdbc:postgresql" "database" "postgres" "setPasswordEmpty" "true" "setUsernameEmpty" true) }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: TIMESCALEDB_INSTALLED
+              value: {{ .Values.global.database.timescaledb.installed | quote }}
+            {{- if not .Values.global.database.timescaledb.installed }}
+            - name: TSDB_SECRET_NAME
+              value: {{ .Values.global.database.timescaledb.secretName }}
+            - name: TSDB_SECRET_PASSWORD_KEY
+              value: {{ .Values.global.database.timescaledb.passwordKey }}
+            - name: TSDB_SECRET_USER_KEY
+              value: {{ .Values.global.database.timescaledb.userKey }}
+            - name: TSDB_SSL_ENABLED
+              value: {{ .Values.global.database.timescaledb.sslEnabled | quote }}
+            {{- end }}
+            - name: POSTGRES_INSTALLED
+              value: {{ .Values.global.database.postgres.installed | quote }}
+            {{- if not .Values.global.database.postgres.installed }}
+            - name: POSTGRES_SECRET_NAME
+              value: {{ .Values.global.database.postgres.secretName }}
+            - name: POSTGRES_SECRET_PASSWORD_KEY
+              value: {{ .Values.global.database.postgres.passwordKey }}
+            - name: POSTGRES_SECRET_USER_KEY
+              value: {{ .Values.global.database.postgres.userKey }}
+            - name: POSTGRES_SSLMODE
+              value: {{ .Values.global.database.postgres.sslMode | quote }}
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{/* 
+          - name: scripts
+            mountPath: /scripts
+            readOnly: true 
+          */}}
+          {{- if .Values.persistence.enabled }}
+          - name: migration-data
+            mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
+          {{- end }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 10 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      {{/* 
+      - name: scripts
+        configMap:
+          name: tsdb-to-psql-migrator
+          defaultMode: 0755 
+      */}}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 6 }}
+      {{- end }}
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 6 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - tsdb-to-psql-migrator
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+      - metadata:
+          name: migration-data
+          {{- if .Values.persistence.annotations }}
+          annotations: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.annotations "context" $) | nindent 10 }}
+          {{- end }}
+          {{- if .Values.persistence.labels }}
+          labels: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.labels "context" $) | nindent 10 }}
+          {{- end }}
+        spec:
+          accessModes:
+          {{- range .Values.persistence.accessModes }}
+            - {{ . | quote }}
+          {{- end }}
+          resources:
+            requests:
+              storage: {{ .Values.persistence.size | quote }}
+              {{- if .Values.persistence.volumeClaimTemplates.requests }}
+              {{- include "common.tplvalues.render" (dict "value" .Values.persistence.volumeClaimTemplates.requests "context" $) | nindent 12 }}
+              {{- end }}
+          {{- if .Values.persistence.volumeClaimTemplates.dataSource }}
+          dataSource: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.volumeClaimTemplates.dataSource "context" $) | nindent 10 }}
+          {{- end }}
+          {{- if .Values.persistence.volumeClaimTemplates.selector }}
+          selector: {{- include "common.tplvalues.render" (dict "value" .Values.persistence.volumeClaimTemplates.selector "context" $) | nindent 10 }}
+          {{- end }}
+          {{ include "tsdb-to-psql-migrator.storage.class" (dict "persistence" .Values.persistence "global" .Values.global) }}
+  {{- end }}
+  

@@ -1,0 +1,1 @@
+{{ include "harnesscommon.monitoring.podMonitor" (dict "name" "chaos-machine-ifc" "ctx" $ "label" "app.kubernetes.io/name") }}

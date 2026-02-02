@@ -1,0 +1,703 @@
+# Default values for nextgen-ce
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  commonAnnotations: {}
+  commonLabels: {}
+  loadbalancerURL: "https://test"
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+    port: 8889
+    path: /metrics
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - dummy.net
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      # -- TimescaleDB secrets
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: "redis-secret"
+      userKey: "redis-user"
+      passwordKey: "redis-password"
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    clickhouse:
+      enabled: false
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              CLICKHOUSE_USERNAME: ""
+              CLICKHOUSE_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                CLICKHOUSE_USERNAME:
+                  name: ""
+                  property: ""
+                CLICKHOUSE_PASSWORD:
+                  name: ""
+                  property: ""
+  ingress:
+    enabled: false
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    className: harness
+    hosts:
+      - my-host.example.org
+    tls:
+      enabled: true
+      secretName: ''
+    objects:
+      annotations: {}
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    virtualService:
+      gateways:
+      hosts:
+  # image pull secrets to use for every image
+  imagePullSecrets: []
+  stackDriverLoggingEnabled: false
+  smtpCreateSecret:
+    enabled: false
+    SMTP_PASSWORD: ""
+    SMTP_HOST: ""
+    SMTP_USERNAME: ""
+    SMTP_USE_SSL: "true"
+    SMTP_PORT: "465"
+    secrets:
+      kubernetesSecrets:
+        - secretName: ""
+          keys:
+            SMTP_USERNAME: ""
+            SMTP_PASSWORD: ""
+            SMTP_HOST: ""
+            SMTP_PORT: ""
+            SMTP_USE_SSL: ""
+      secretManagement:
+        externalSecretsOperator:
+          - secretStore:
+              name: ""
+              kind: ""
+            remoteKeys:
+              SMTP_USERNAME:
+                name: ""
+                property: ""
+              SMTP_PASSWORD:
+                name: ""
+                property: ""
+              SMTP_HOST:
+                name: ""
+                property: ""
+              SMTP_PORT:
+                name: ""
+                property: ""
+              SMTP_USE_SSL:
+                name: ""
+                property: ""
+  ccm:
+    gcpProjectId: "placeHolder"
+    governance:
+      enabled: false
+  proxy:
+    enabled: false
+    host: localhost
+    port: 80
+    username: ""
+    password: ""
+    protocol: http
+  awsServiceEndpointUrls:
+    enabled: false
+    endPointRegion: us-east-2
+    stsEndPointUrl: https://sts.us-east-2.amazonaws.com
+    ecsEndPointUrl: https://ecs.us-east-2.amazonaws.com
+    cloudwatchEndPointUrl: https://monitoring.us-east-2.amazonaws.com
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      # image pull secrets to use for helm-init-container image
+      imagePullSecrets: []
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+replicaCount: 1
+timescaledb:
+  enabled: false
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+secondaryTimescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  protocol: "jdbc:postgresql2312321"
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+database:
+  mongo:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    notifications:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    lock:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+java:
+  memory: "4096m"
+  memoryLimit: "4096m"
+image:
+  registry: docker.io
+  repository: harness/ce-nextgen-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.76.6"
+  digest: ""
+  # image pull secrets to use for ce-nextgen image
+  imagePullSecrets: []
+ceng-gcp-credentials: ""
+nameOverride: "nextgen-ce"
+fullnameOverride: ""
+serviceAccount:
+  create: false
+  annotations: {}
+  name: "harness-default"
+podAnnotations: {}
+podSecurityContext: {}
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 6340
+smtp:
+  host: ""
+  password: ""
+  username: ""
+ingress:
+  annotations: {}
+  className: nginx
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /ccm/api$1$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/ccm/api(/|$)(.*)'
+          backend:
+            service:
+              name: nextgen-ce
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+cloudProviderConfig:
+  AZURE_APP_CLIENT_ID: "0211763d-24fb-4d63-865d-92f86f77e908"
+  AWS_GOV_CLOUD_ACCOUNT_ID: "147449478367"
+  AWS_GOV_CLOUD_REGION_NAME: "us-gov-west-1"
+  AWS_GOV_CLOUD_TEMPLATE_LINK: "https://continuous-efficiency.s3.us-east-2.amazonaws.com/setup/v1/ng/HarnessAWSTemplate.yaml"
+  GCP_SERVICE_ACCOUNT_EMAIL: "placeHolder"
+  AWS_TEMPLATE_LINK: "https://continuous-efficiency.s3.us-east-2.amazonaws.com/setup/v1/ng/HarnessAWSTemplate.yaml"
+  AZURE_STORAGE_SUFFIX: "blob.core.windows.net"
+  AZURE_AUTHORITY_HOST: "https://login.microsoftonline.com"
+clickhouse:
+  username: "default"
+  password:
+    name: clickhouse
+    key: admin-password
+workloadIdentity:
+  enabled: false
+secretsFromHelper:
+  disabled: false
+resources:
+  limits:
+    memory: "4Gi"
+  requests:
+    cpu: 1
+    memory: "4Gi"
+additionalConfigs: {}
+java17flags: "--illegal-access=debug --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.nio=ALL-UNNAMED --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED --add-opens java.base/java.time=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED --add-opens java.base/java.lang.invoke=ALL-UNNAMED --add-opens java.base/java.math=ALL-UNNAMED --add-opens java.base/java.nio.file=ALL-UNNAMED --add-opens java.base/java.util.concurrent=ALL-UNNAMED --add-opens java.xml/com.sun.org.apache.xpath.internal=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.text=ALL-UNNAMED --add-exports java.xml/com.sun.org.apache.xerces.internal.parsers=ALL-UNNAMED --add-exports java.base/sun.nio.ch=ALL-UNNAMED"
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+virtualService:
+  annotations: {}
+  objects:
+    - pathMatchType: prefix
+      pathRewrite: "/ccm/api/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/ccm/api/'
+          backend:
+            service:
+              name: nextgen-ce
+distributedLockImplementation: REDIS
+probes:
+  livenessProbe:
+    httpGet:
+      path: /ccm/api/health
+      port: 6340
+    initialDelaySeconds: 30
+    failureThreshold: 10
+    periodSeconds: 15
+  readinessProbe:
+    httpGet:
+      path: /ccm/api/health
+      port: 6340
+    initialDelaySeconds: 30
+    failureThreshold: 10
+    periodSeconds: 15
+governance:
+  ootbAccount: kmpySmUISimoRrJL6NL73w
+  governanceRecommendationMinCostForMonth: 300
+  governanceMinCostPerRecommendationLimit: 10
+  governanceRecommendationHealthUpdateEnabledAws: false
+  governanceRecommendationHealthUpdateEnabledAzure: false
+  governanceRecommendationHealthUpdateEnabledGcp: false
+ccmExternalDataConfig:
+  isExternalDataEnabled: true
+  gcsBucketName: ccm-play-ccm-externaldata
+  allowedContentType: "text/csv"
+  signedUrlExpiry: "20" # minutes
+  externalDataCloudFunctionName: "ce-externaldata-bq-terraform"
+  externalDataCloudFunctionRegion: "us-central1"
+secrets:
+  defaultSecretName: "nextgen-ce"
+  fileSecret:
+    - volumeMountPath: "/opt/harness/svc"
+      keys:
+        - key: CENG_GCP_CREDENTIALS
+          path: "ceng_gcp_credentials.json"
+  conditions:
+    FAKTORY_PASSWORD: "global.ccm.governance.enabled"
+    CENG_GCP_CREDENTIALS: "secretsFromHelper.disabled"
+  default:
+    JWT_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    NEXT_GEN_MANAGER_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    JWT_IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    NOTIFICATION_CLIENT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    ACCESS_CONTROL_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    AWS_ACCESS_KEY: "placeholder"
+    AWS_SECRET_KEY: "placeholder"
+    AWS_ACCOUNT_ID: "placeholder"
+    AZURE_APP_CLIENT_SECRET: "placeholder"
+    FAKTORY_PASSWORD: ""
+    CE_NEXT_GEN_SERVICE_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    CENG_GCP_CREDENTIALS: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        JWT_AUTH_SECRET: ""
+        NEXT_GEN_MANAGER_SECRET: ""
+        JWT_IDENTITY_SERVICE_SECRET: ""
+        NOTIFICATION_CLIENT_SECRET: ""
+        ACCESS_CONTROL_SECRET: ""
+        AWS_ACCESS_KEY: ""
+        AWS_SECRET_KEY: ""
+        AWS_ACCOUNT_ID: ""
+        AZURE_APP_CLIENT_SECRET: ""
+        CE_NEXT_GEN_SERVICE_SECRET: ""
+        CENG_GCP_CREDENTIALS: ""
+    - secretName: ""
+      keys:
+        FAKTORY_PASSWORD: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          JWT_AUTH_SECRET:
+            name: ""
+            property: ""
+          NEXT_GEN_MANAGER_SECRET:
+            name: ""
+            property: ""
+          JWT_IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+          NOTIFICATION_CLIENT_SECRET:
+            name: ""
+            property: ""
+          ACCESS_CONTROL_SECRET:
+            name: ""
+            property: ""
+          AWS_ACCESS_KEY:
+            name: ""
+            property: ""
+          AWS_SECRET_KEY:
+            name: ""
+            property: ""
+          AWS_ACCOUNT_ID:
+            name: ""
+            property: ""
+          AZURE_APP_CLIENT_SECRET:
+            name: ""
+            property: ""
+          FAKTORY_PASSWORD:
+            name: ""
+            property: ""
+          CE_NEXT_GEN_SERVICE_SECRET:
+            name: ""
+            property: ""
+          CENG_GCP_CREDENTIALS:
+            name: ""
+            property: ""
+config:
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: harness-redis
+  EVENTS_FRAMEWORK_AVAILABLE_IN_ONPREM: "true"
+  EVENTS_FRAMEWORK_ENV_NAMESPACE: ""
+  EVENTS_MONGO_INDEX_MANAGER_MODE: AUTO
+  CACHE_BACKEND: REDIS
+  CACHE_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  CACHE_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  CACHE_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  LOCK_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  MANAGER_CLIENT_BASEURL: "http://harness-manager.{{ .Release.Namespace }}.svc.cluster.local:9090/api/"
+  NG_MANAGER_CLIENT_BASEURL: "http://ng-manager.{{ .Release.Namespace }}.svc.cluster.local:7090/"
+  MANAGER_URL: "http://harness-manager.{{ .Release.Namespace }}.svc.cluster.local:9090/api/"
+  DEPLOY_MODE: 'KUBERNETES_ONPREM'
+  CE_NEXTGEN_PORT: '{{ .Values.service.port }}'
+  STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
+  GCP_PROJECT_ID: '{{ .Values.global.ccm.gcpProjectId }}'
+  AZURE_APP_CLIENT_ID: '{{ .Values.cloudProviderConfig.AZURE_APP_CLIENT_ID }}'
+  AWS_TEMPLATE_LINK: '{{ .Values.cloudProviderConfig.AWS_TEMPLATE_LINK }}'
+  AWS_GOV_CLOUD_ACCOUNT_ID: '{{ .Values.cloudProviderConfig.AWS_GOV_CLOUD_ACCOUNT_ID }}'
+  AWS_GOV_CLOUD_TEMPLATE_LINK: '{{ .Values.cloudProviderConfig.AWS_GOV_CLOUD_TEMPLATE_LINK }}'
+  AWS_GOV_CLOUD_REGION_NAME: '{{ .Values.cloudProviderConfig.AWS_GOV_CLOUD_REGION_NAME }}'
+  AZURE_STORAGE_SUFFIX: '{{ .Values.cloudProviderConfig.AZURE_STORAGE_SUFFIX }}'
+  AZURE_AUTHORITY_HOST: '{{ .Values.cloudProviderConfig.AZURE_AUTHORITY_HOST }}'
+  AUDIT_CLIENT_BASEURL: "http://platform-service.{{ .Release.Namespace }}.svc.cluster.local:9005/api/"
+  NOTIFICATION_BASE_URL: "http://platform-service.{{ .Release.Namespace }}.svc.cluster.local:9005/api/"
+  ACCESS_CONTROL_BASE_URL: "http://access-control.{{ .Release.Namespace }}.svc.cluster.local:9006/api/"
+  MEMORY: '{{ .Values.java.memory }}'
+  CLICKHOUSE_ENABLED: '{{ .Values.global.database.clickhouse.enabled }}'
+  DISTRIBUTED_LOCK_IMPLEMENTATION: '{{ .Values.distributedLockImplementation }}'
+  DKRON_CLIENT_BASEURL: "http://dkron:8080"
+  GOVERNANCE_CALLBACK_API_ENDPOINT: "http://nextgen-ce.{{ .Release.Namespace }}.svc.cluster.local:6340/ccm/api/governance/enqueueInternal"
+  GOVERNANCE_OOTB_ACCOUNT: '{{ .Values.governance.ootbAccount }}'
+  USE_WORKLOAD_IDENTITY: '{{ .Values.workloadIdentity.enabled }}'
+  GCP_SERVICE_ACCOUNT_EMAIL: '{{ .Values.cloudProviderConfig.GCP_SERVICE_ACCOUNT_EMAIL }}'
+  LOGGING_LEVEL: INFO
+  MANAGER_TARGET: harness-manager:9879
+  MANAGER_AUTHORITY: harness-manager:9879
+  INTERNAL_MANAGER_TARGET: harness-manager:9879
+  INTERNAL_MANAGER_AUTHORITY: harness-manager:9879
+  AZURE_ENABLE_FILE_CHECK_AT_SOURCE: "true"
+  AWS_DESTINATION_BUCKET: customer-billing-data-dev
+  AWS_DESTINATION_BUCKET_COUNT: "3"
+  CE_AWS_TEMPLATE_URL: ""
+  SEGMENT_ENABLED: "false"
+  AUDIT_ENABLED: "true"
+  ACCESS_CONTROL_ENABLED: "true"
+  MOCK_ACCESS_CONTROL_SERVICE: "false"
+  ENABLE_APPDYNAMICS: "false"
+  FEATURE_FLAG_SYSTEM: "LOCAL"
+  ENABLE_LIGHTWING_AUTOCUD_DC: "false"
+  LIGHTWING_AUTOCUD_CLIENT_CONFIG_BASEURL: "http://lwd.{{ .Release.Namespace }}.svc.cluster.local:9090"
+  GOVERNANCE_RECOMMENDATION_MIN_COST_LIMIT: '{{ .Values.governance.governanceRecommendationMinCostForMonth }}'
+  GOVERNANCE_MIN_COST_PER_RECOMMENDATION_LIMIT: '{{ .Values.governance.governanceMinCostPerRecommendationLimit }}'
+  GOVERNANCE_RECOMMENDATION_HEALTH_UPDATE_ENABLED_AWS: '{{ .Values.governance.governanceRecommendationHealthUpdateEnabledAws }}'
+  GOVERNANCE_RECOMMENDATION_HEALTH_UPDATE_ENABLED_AZURE: '{{ .Values.governance.governanceRecommendationHealthUpdateEnabledAzure }}'
+  GOVERNANCE_RECOMMENDATION_HEALTH_UPDATE_ENABLED_GCP: '{{ .Values.governance.governanceRecommendationHealthUpdateEnabledGcp }}'
+  EXTERNALDATA_GCS_BUCKET_NAME: '{{ .Values.ccmExternalDataConfig.gcsBucketName }}'
+  EXTERNALDATA_ALLOWED_CONTENT_TYPE: '{{ .Values.ccmExternalDataConfig.allowedContentType }}'
+  EXTERNALDATA_SIGNED_URL_EXPIRY: '{{ .Values.ccmExternalDataConfig.signedUrlExpiry }}'
+  EXTERNALDATA_CLOUD_FUNCTION_NAME: '{{ .Values.ccmExternalDataConfig.externalDataCloudFunctionName }}'
+  EXTERNALDATA_CLOUD_FUNCTION_REGION: '{{ .Values.ccmExternalDataConfig.externalDataCloudFunctionRegion }}'
+rbac:
+  rules: []
+pdb:
+  create: false

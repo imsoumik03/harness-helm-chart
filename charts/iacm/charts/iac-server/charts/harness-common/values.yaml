@@ -1,0 +1,125 @@
+global:
+  ha: false
+  cet:
+    # Global Settings/Enabling of Error Tracking Agent
+    # Note: These are for Enabling the Agent with Harness Services
+    agent:
+      enabled: false
+      collectorURL: ""
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      databasePrefix: ""
+      protocol: mongodb
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      hosts:
+      - "redis:6379"
+      secretName: "secret"
+      userKey: "user"
+      passwordKey: "password"
+      extraArgs: ""
+  smtpCreateSecret:
+    enabled: false
+    SMTP_USERNAME: ""
+    SMTP_PASSWORD: ""
+    SMTP_HOST: ""
+    SMTP_USE_SSL: "true"
+    SMTP_PORT: "465"
+    secrets:
+      kubernetesSecrets:
+        - secretName: ""
+          keys:
+            SMTP_USERNAME: ""
+            SMTP_PASSWORD": ""
+            SMTP_HOST: ""
+            SMTP_PORT": ""
+            SMTP_USE_SSL": ""
+      secretManagement:
+        externalSecretsOperator:
+          - secretStore:
+              name: ""
+              kind: ""
+            remoteKeys:
+              SMTP_USERNAME:
+                name: ""
+                property: ""
+              SMTP_PASSWORD":
+                name: ""
+                property: ""
+              SMTP_HOST:
+                name: ""
+                property: ""
+              SMTP_PORT":
+                name: ""
+                property: ""
+              SMTP_USE_SSL:
+                name: ""
+                property: ""

@@ -1,0 +1,471 @@
+# Default values for looker
+# This is a YAML-formatted file.
+
+config:
+  # -- name of the user who performs setup and support tasks
+  firstName: Harness
+  # -- last name of the user who performs setup and support tasks
+  lastName: Support
+  # -- email address of the support user, required for initial signup and support
+  email: 'harnessSupport@harness.io'
+  # -- timescale connection name, must match model connection name
+  timescaleConnectionName: 'smp-timescale'
+  # -- timescale database name
+  timescaleDatabase: 'harness'
+  # -- timescale connection name for feature flags, must match model connection name
+  ffConnectionName: 'smp-timescale-cf'
+  # -- timescale database name for feature flags
+  ffDatabase: 'harness_ff'
+  # -- postgres connection name for STO, must match model connection name
+  stoConnectionName: 'smp-postgres'
+  # -- clickhouse connection name for CCM, must match model connection name
+  clickhouseConnectionName: smp-clickhouse
+  # -- clickhouse hostname
+  clickhouseHost: 'clickhouse'
+  # -- clickhouse port
+  clickhousePort: '8123'
+  # -- clickhouse database name
+  clickhouseDatabase: 'ccm'
+  # -- enabled SSL connection for clickhouse
+  clickhouseSsl: 'false'
+  # -- use verified SSL connection for clickhouse
+  clickhouseVerifySsl: 'false'
+  # -- clickhouse user
+  clickhouseUser: 'default'
+  # -- name of the looker project which will be created
+  projectName: 'Harness'
+mysql:
+  enabled: false
+  host: looker-mysql
+  user: looker
+  database: looker
+  port: '3306'
+mysqlSecrets:
+  password:
+    root:
+      name: looker-mysql-secrets
+      # -- name of secret containing the mysql root password
+      key: lookerMySqlRootPassword
+    user:
+      name: looker-mysql-secrets
+      # -- name of secret containing the mysql looker user password
+      key: lookerMySqlUserPassword
+lookerSecrets:
+  licenseKey:
+    # -- name of secret containing the Looker secrets
+    name: looker-secrets
+    # -- name of key within secret containing the looker license key which will be provided by Harness
+    key: lookerLicenseKey
+  licenseFile:
+    # -- name of secret containing the Looker secrets
+    name: looker-secrets
+    # -- name of key within secret containing the offline looker license key which will be provided by Harness
+    key: lookerLicenseFile
+  masterKey:
+    # -- name of secret containing the Looker secrets
+    name: looker-secrets
+    # -- name of key within secret containing the key used for at rest encryption by looker, generate a Base64, 32-byte key, e.g. openssl rand -base64 32
+    key: lookerMasterKey
+  clientId:
+    # -- name of secret containing the Looker connection secrets
+    name: harness-looker-secrets
+    # -- name of key within secret containing the id used for API authentication, generate a 20-byte key, e.g. openssl rand -hex 10
+    key: lookerClientId
+  clientSecret:
+    # -- name of secret containing the Looker connection secrets
+    name: harness-looker-secrets
+    # -- name of key within secret containing the client secret used for API authentication, generate a 24-byte key, e.g. openssl rand -hex 12
+    key: lookerClientSecret
+timescaleSecrets:
+  password:
+    # -- name of secret containing the timescale password
+    name: harness-secrets
+    # -- name of key within secret containing the timescale password
+    key: timescaledbPostgresPassword
+postgresPassword:
+  # -- name of secret containing the postgres password
+  name: postgres
+  # -- name of key within secret containing the postgres password
+  key: postgres-password
+clickhouseSecrets:
+  password:
+    # -- name of secret containing the clickhouse password
+    name: clickhouse
+    # -- name of key within secret containing the clickhouse password
+    key: admin-password
+ingress:
+  # -- Required if ingress is enabled, Looker requires a separate DNS domain name to function
+  hosts: []
+  tls:
+    secretName: ''
+  annotations: {}
+models:
+  persistence:
+    # -- PVC Storage Class for models data volume
+    # If defined, storageClassName: <storageClass>
+    # If set to "-", storageClassName: "", which disables dynamic provisioning
+    # If undefined (the default) or set to null, no storageClassName spec is
+    #   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    #   GKE, AWS & OpenStack)
+    storageClass: ""
+    # -- Directory where Looker models volume will be mounted
+    mountPath: /mnt/lookerfiles
+    # -- PVC Access Modes for models data volume
+    accessModes:
+      - ReadWriteOnce
+    # -- Size of volume where Looker stores model files
+    size: 2Gi
+    # -- Annotations for the models PVC
+    annotations: {}
+    # -- Name of an existing PVC to use for models
+    existingClaim: ""
+    # -- Name of created PVC
+    claimName: lookerfiles
+database:
+  persistence:
+    # -- PVC Storage Class for database data volume
+    storageClass: ""
+    # -- Directory where Looker database volume will be mounted
+    mountPath: /home/looker/looker/.db
+    # -- PVC Access Modes for database data volume
+    accessModes:
+      - ReadWriteOnce
+    # -- Size of volume where for storing the Looker database
+    size: 20Gi
+    # -- Annotations for the database PVC
+    annotations: {}
+    # -- Name of an existing PVC to use for database
+    existingClaim: ""
+    # -- Name of created PVC
+    claimName: looker-db
+  postgres:
+    # -- override for postgres host, only to be used as workaround when automatic config from global is broken
+    host: ""
+    # -- override for postgres port, only to be used as workaround when automatic config from global is broken
+    port: ""
+    # -- override for postgres database, only to be used as workaround when automatic config from global is broken
+    database: ""
+    # -- override for postgres ssl, only to be used as workaround when automatic config from global is broken
+    ssl: ""
+    # -- override for postgres ssl verification, only to be used as workaround when automatic config from global is broken
+    verifySsl: ""
+global:
+  loadbalancerURL: ""
+  commonAnnotations: {}
+  commonLabels: {}
+  airgap: "false"
+  ha: false
+  storageClassName:
+  ingress:
+    objects:
+      annotations: {}
+    enabled: false
+    className: ''
+    tls:
+      enabled: false
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    hosts:
+      - '*'
+    virtualService:
+      # Unused if gateway.create is enabled
+      gateways:
+        - "someGateway"
+      hosts:
+        - "myhostname.example.com"
+  imagePullSecrets: []
+  database:
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+    clickhouse:
+      enabled: false
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              CLICKHOUSE_USERNAME: ""
+              CLICKHOUSE_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                CLICKHOUSE_USERNAME:
+                  name: ""
+                  property: ""
+                CLICKHOUSE_PASSWORD:
+                  name: ""
+                  property: ""
+    postgres:
+      # -- installed = true if installed within cluster
+      installed: true
+      # -- protocol to use for connection
+      protocol: postgres
+      # -- host array for external
+      hosts:
+        - pg-two:5432
+        - pg-one:5432
+      # -- secret name containing values for external
+      secretName: ""
+      # -- key within secret containing username for external
+      userKey: ""
+      # -- key within secret containing password for external
+      passwordKey: ""
+      # -- extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+maxSurge: 1
+maxUnavailable: 0
+# looker overrides for istio, if different host and gateway is used is given
+istio:
+  gateway:
+    # enable to create looker gateway
+    create: false
+    port: 443
+    protocol: HTTPS
+  hosts:
+    - '*'
+  tls:
+    credentialName: harness-cert
+    minProtocolVersion: TLSV1_2
+    mode: SIMPLE
+  virtualService:
+    # enable to set specific looker host
+    enabled: false
+    # -- Required if istio is enabled, Looker requires a separate DNS domain name to function
+    hosts:
+      - 'myhostname.example.com'
+image:
+  registry: docker.io
+  repository: harness/looker-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.8.8"
+  digest: ""
+  imagePullSecrets: []
+  mysql:
+    registry: docker.io
+    repository: harness/mysql
+    tag: "enterprise-server-8.0.32"
+    imagePullSecrets: []
+secrets:
+  # -- Required: Looker license key
+  lookerLicenseKey: ""
+  lookerMasterKey: ""
+  lookerClientId: ""
+  lookerClientSecret: ""
+  lookerEmbedSecret: ""
+  lookerSignupUrl: ""
+  lookerMySqlUserPassword: ""
+  lookerMySqlRootPassword: ""
+  default:
+    LICENSE_KEY: ""
+    LICENSE_FILE: ""
+    LKR_MASTER_KEY_ENV: ""
+    CLIENT_SECRET: ""
+    CLIENT_ID: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        LICENSE_KEY: ""
+        LICENSE_FILE: ""
+        LKR_MASTER_KEY_ENV: ""
+        CLIENT_SECRET: ""
+        CLIENT_ID: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          LICENSE_KEY:
+            name: ""
+            property: ""
+          LICENSE_FILE:
+            name: ""
+            property: ""
+          LKR_MASTER_KEY_ENV:
+            name: ""
+            property: ""
+          CLIENT_SECRET:
+            name: ""
+            property: ""
+          CLIENT_ID:
+            name: ""
+            property: ""
+waitForInitContainer:
+  image:
+    registry: docker.io
+    repository: ubuntu
+    pullPolicy: IfNotPresent
+    tag: "20.04"
+    digest: ""
+    imagePullSecrets: []
+postgres:
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-looker"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  runAsGroup: 1001
+  runAsUser: 1001
+  fsGroup: 1001
+  # fsGroup: 2000
+securityContext:
+  runAsUser: 1001
+  runAsNonRoot: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+service:
+  annotations: {}
+  type: ClusterIP
+  port:
+    web: 9999
+    api: 19999
+virtualService:
+  annotations: {}
+resources:
+  limits:
+    # -- minimum of 6GiB recommended
+    memory: 12Gi
+  requests:
+    cpu: 2
+    memory: 12Gi
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:

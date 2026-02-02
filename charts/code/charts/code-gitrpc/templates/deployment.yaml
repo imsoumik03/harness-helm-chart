@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name:  {{ include "code-gitrpc.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "code-gitrpc.labels" . | nindent 4}}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.instances }}
+  serviceName:  {{ include "code-gitrpc.name" . }}
+  selector:
+    matchLabels:
+      {{- include "code-gitrpc.selectorLabels" . | nindent 6 }}
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app:  {{ include "code-gitrpc.name" . }}
+        {{- include "code-gitrpc.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: {{ add .Values.config.CODE_SERVER_GRACEFUL_SHUTDOWN_TIME 5 }}
+      {{- include "code-gitrpc.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "code-gitrpc.serviceAccountName" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+      - name: set-permissions
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.busybox.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.busybox.image.pullPolicy }}
+        securityContext:
+          runAsUser: 0
+        command: ["sh", "-c"]
+        args:
+         - |
+           mount_path="{{ .Values.config.mountPath | quote }}"
+           chown 1001:1001 $mount_path;
+         - |
+           cache_path="{{ .Values.additionalConfig.GITRPC_PACK_OBJECTS_CACHE_DIR | quote }}"
+           chown 1001:1001 $cache_path;
+        volumeMounts:
+        - name: repos
+          mountPath: {{ .Values.config.mountPath | quote }}
+        - name: cache
+          mountPath: {{ .Values.additionalConfig.GITRPC_PACK_OBJECTS_CACHE_DIR | quote }}
+      containers:
+        - name: gitrpc
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1001
+          volumeMounts:
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "code-githa") | nindent 12 }}
+          - name: repos
+            mountPath: {{ .Values.config.mountPath | quote }}
+          - name: cache
+            mountPath: {{ .Values.additionalConfig.GITRPC_PACK_OBJECTS_CACHE_DIR | quote }}
+          env:
+          {{- include "harnesscommon.dbv3.redisEnv"  (dict "ctx" $ "database" "code-gitrpc" "userVariableName" "GITRPC_REDIS_USERNAME" "passwordVariableName" "GITRPC_REDIS_PASSWORD") | indent 12 }}
+          envFrom:
+          - configMapRef:
+              name:  {{ include "code-gitrpc.name" . }}
+          ports:
+          - name: code-gitrpc
+            containerPort: {{ .Values.config.CODE_GITRPC_SERVER_PORT }}
+            protocol: "TCP"
+          - name: code-http
+            containerPort: {{ .Values.config.CODE_GITRPC_SERVER_HTTP_PORT }}
+            protocol: "TCP"
+          {{- if .Values.resources }}
+          resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+          {{- end}}
+      volumes:
+        - name: cache
+          emptyDir:
+            sizeLimit: {{ .Values.additionalConfig.GITRPC_PACK_OBJECTS_CACHE_DISK_SIZE }}
+  volumeClaimTemplates:
+  - metadata:
+      name: repos
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- $storageClassName := (include "code-gitrpc.storage.class" $) }}
+      {{- if $storageClassName }}
+      storageClassName: {{ $storageClassName }}
+      {{- end}}
+      resources:
+        requests:
+          storage: {{ .Values.config.CODE_GITRPC_PV_STORAGE }}

@@ -1,0 +1,164 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: '{{ include "looker.name" . }}'
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{- include "looker.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "looker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+      labels:
+        app: looker
+        envoy-rewrite: looker
+        podAffinity: looker-app
+        {{- include "looker.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "looker.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "looker.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: '{{ include "looker.name" . }}'
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+              {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+          - name: looker-web
+            containerPort: 9999
+            protocol: "TCP"
+          - name: looker-api
+            containerPort: 19999
+            protocol: "TCP"
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" . "userVariableName" "TIMESCALE_USER" "passwordVariableName" "TIMESCALE_PASSWORD" "enableSslVariableName" "TIMESCALE_SSL") | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $) | nindent 12 }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LICENSE_KEY" "defaultKubernetesSecretName" .Values.lookerSecrets.licenseKey.name "defaultKubernetesSecretKey" .Values.lookerSecrets.licenseKey.key) | indent 12 }}
+            {{- if .Values.global.airgap }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LICENSE_FILE" "defaultKubernetesSecretName" .Values.lookerSecrets.licenseFile.name "defaultKubernetesSecretKey" .Values.lookerSecrets.licenseFile.key) | indent 12 }}
+            {{- end }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "LKR_MASTER_KEY_ENV" "defaultKubernetesSecretName" .Values.lookerSecrets.masterKey.name "defaultKubernetesSecretKey" .Values.lookerSecrets.masterKey.key) | indent 12 }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CLIENT_SECRET" "defaultKubernetesSecretName" .Values.lookerSecrets.clientSecret.name "defaultKubernetesSecretKey" .Values.lookerSecrets.clientSecret.key) | indent 12 }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "CLIENT_ID" "defaultKubernetesSecretName" .Values.lookerSecrets.clientId.name "defaultKubernetesSecretKey" .Values.lookerSecrets.clientId.key) | indent 12 }}
+            {{- if .Values.global.database.clickhouse.enabled }}
+            {{- $globalClickhouseESOSecretIdentifier := include "harnesscommon.secrets.globalESOSecretCtxIdentifier" (dict "ctx" $  "ctxIdentifier" "clickhouse") }}
+            {{- include "harnesscommon.secrets.manageEnv" (dict "ctx" $ "variableName" "CLICKHOUSE_USER" "defaultValue" .Values.config.clickhouseUser "extKubernetesSecretCtxs" (list .Values.global.database.clickhouse.secrets.kubernetesSecrets) "esoSecretCtxs" (list (dict "secretCtxIdentifier" $globalClickhouseESOSecretIdentifier "secretCtx" .Values.global.database.clickhouse.secrets.secretManagement.externalSecretsOperator))) | indent 12 }}
+            {{- include "harnesscommon.secrets.manageEnv" (dict "ctx" $ "variableName" "CLICKHOUSE_PASSWORD" "defaultKubernetesSecretName" .Values.clickhouseSecrets.password.name "defaultKubernetesSecretKey" .Values.clickhouseSecrets.password.key "extKubernetesSecretCtxs" (list .Values.global.database.clickhouse.secrets.kubernetesSecrets) "esoSecretCtxs" (list (dict "secretCtxIdentifier" $globalClickhouseESOSecretIdentifier "secretCtx" .Values.global.database.clickhouse.secrets.secretManagement.externalSecretsOperator))) | indent 12 }}
+            {{- end }}
+            {{- if .Values.mysql.enabled }}
+            - name: LOOKER_MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysqlSecrets.password.user.name }}
+                  key: {{ .Values.mysqlSecrets.password.user.key }}
+            {{- end}}
+          envFrom:
+          - configMapRef:
+              name: '{{ include "looker.name" . }}'
+          startupProbe:
+            httpGet:
+              path: /alive
+              port: looker-api
+            failureThreshold: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: looker-api
+            periodSeconds: 10
+            failureThreshold: 2
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: looker-api
+            periodSeconds: 10
+            failureThreshold: 12
+          volumeMounts:
+            - name: looker-startup
+              mountPath: /home/looker/looker/lookerstart.cfg
+              subPath: lookerstart.cfg
+            - name: lookerfiles
+              mountPath: {{ .Values.models.persistence.mountPath }}
+            {{- if not .Values.mysql.enabled }}
+            - name: looker-db
+              mountPath: {{ .Values.database.persistence.mountPath }}
+            {{- end}}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: looker-startup
+          configMap:
+            defaultMode: 420
+            name: looker-startup-options
+            items:
+              - key: lookerstart.cfg
+                path: lookerstart.cfg
+        {{- if .Values.extraVolumes }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+        {{- end }}
+        - name: lookerfiles
+          persistentVolumeClaim:
+            claimName: {{ include "looker.claimName" (dict "persistence" .Values.models.persistence) }}
+            readOnly: false
+        {{- if not .Values.mysql.enabled }}
+        - name: looker-db
+          persistentVolumeClaim:
+            claimName: {{ include "looker.claimName" (dict "persistence" .Values.database.persistence) }}
+            readOnly: false
+        {{- end}}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - '{{ include "looker.name" . }}'
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

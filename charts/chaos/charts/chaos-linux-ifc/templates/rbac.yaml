@@ -1,0 +1,46 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "chaos-linux-ifc.name" . }}
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    name: {{ include "chaos-linux-ifc.name" . }}
+    {{- include "chaos-linux-ifc.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [ "" ]
+    resources: [ "pods"]
+    verbs: ["delete","deletecollection"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get","create","update","patch","delete","list","watch","deletecollection"]
+  {{- if .Values.global.crd.enabled }}
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["taskdefinitions","linuxchaosexperiments","chaosresults"]
+    verbs: ["get","create","update","patch","delete","list","watch","deletecollection"]
+  - apiGroups: ["litmuschaos.io"]
+    resources: ["linuxchaosexperiments/finalizers"]
+    verbs: ["update"]
+  {{- end }}
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get","create","list","update","delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "chaos-linux-ifc.name" . }}
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    name: {{ include "chaos-linux-ifc.name" . }}
+    {{- include "chaos-linux-ifc.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "chaos-linux-ifc.name" . }}
+subjects:
+  - kind: ServiceAccount
+    name: '{{ include "chaos-linux-ifc.serviceAccountName" . }}'

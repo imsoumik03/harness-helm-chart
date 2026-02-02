@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "iac-server.name" . }}
+  labels:
+    {{- include "iac-server.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if or .Values.service.annotations .Values.global.commonAnnotations }}
+  annotations:
+    {{- if .Values.service.annotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.service.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.global.commonAnnotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: ClusterIP
+  ports:
+  - name: {{ include "iac-server.name" . }}
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    {{- include "iac-server.selectorLabels" . | nindent 4 }}

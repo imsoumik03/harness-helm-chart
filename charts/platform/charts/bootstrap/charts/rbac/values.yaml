@@ -1,0 +1,10 @@
+global:
+  commonAnnotations: {}
+  commonLabels: {}
+
+serviceAccount:
+  create: true
+  name: harness-default
+
+rbac:
+  rules: []

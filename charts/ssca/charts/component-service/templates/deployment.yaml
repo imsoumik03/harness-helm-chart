@@ -1,0 +1,154 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: component-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+      {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.global.commonLabels "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.global.commonAnnotations }}
+  annotations:
+    {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.global.commonAnnotations "context" $) | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "component-service.selectorLabels" . | nindent 6 }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        checksum/credentials-secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+      {{- if .Values.podAnnotations }}
+      {{- toYaml .Values.podAnnotations | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+      {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.global.commonAnnotations "context" $) | nindent 8 }}
+      {{- end }}
+      {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }}
+      labels:
+        app: component-service
+        {{- include "component-service.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.global.commonLabels "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "component-service.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "component-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- include "harnesscommon.jfr.v1.initContainer" (dict "ctx" $) | nindent 8 }}
+        {{- if .Values.initContainers }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if and .Values.global.database.mongo.installed (eq .Values.config.DEPLOY_MODE "KUBERNETES_ONPREM") }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+        {{- end }}
+        {{- if .Values.global.database.redis.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-redis" "appName" "redis-sentinel") | nindent 8}}
+        {{- end }}
+      containers:
+        - name: component-service
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: Always
+          securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: component-service
+            - secretRef:
+                name: component-service
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCATrustStorePath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "lock" "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cache" "userVariableName" "CACHE_CONFIG_REDIS_USERNAME" "passwordVariableName" "CACHE_CONFIG_REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "lock" "variableNames" ( dict "sslEnabled" "LOCK_CONFIG_REDIS_SSL_ENABLED" "sslCATrustStorePath" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cache" "variableNames" ( dict "sslCATrustStorePath" "CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "CACHE_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.elasticEnv" (dict "ctx" $ "userVariableName" "ELASTIC_USERNAME" "passwordVariableName" "ELASTIC_PASSWORD" "apiKeyVariableName" "ELASTIC_API_KEY") | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $  "passwordVariableName" "TIMESCALE_PASSWORD") | indent 12 }}
+            - name: TIMESCALE_URI
+              value: {{ include "harnesscommon.dbconnectionv2.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "harness" "context" $) }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "component-harness") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "component-harness" "connectionURIVariableName" "MONGO_URI") | indent 12 }}
+            {{- include "harnesscommon.jfr.v1.renderEnvironmentVars" (dict "ctx" $)  | indent 12 }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | indent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 300
+            timeoutSeconds: 5
+            periodSeconds: 60
+            failureThreshold: 2
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            periodSeconds: 5
+          resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+          lifecycle:
+            {{- include "harnesscommon.v1.renderLifecycleHooks" (dict "ctx" $) | indent 12 }}
+          volumeMounts:
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "lock") | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cache") | indent 12 }}
+            {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | nindent 12}}
+            {{- include "harnesscommon.jfr.v1.volumeMounts" (dict "ctx" $) | nindent 12 }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - component-service
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- include "harnesscommon.jfr.v1.volumes" (dict "ctx" $) | nindent 8 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 8 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "lock") | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cache") | indent 8 }}
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | nindent 8 }}
+        {{- if .Values.extraVolumes }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+        {{- end }}

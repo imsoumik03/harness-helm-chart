@@ -1,0 +1,180 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "iac-server.name" . }}
+  labels:
+    app: iac-server
+    {{- include "iac-server.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscalingEnabled }}
+  replicas: {{.Values.replicas}}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "iac-server.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.maxSurge }}
+      maxUnavailable: {{ .Values.maxUnavailable }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        app: iac-server
+        {{- include "iac-server.labels" . | nindent 8 }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "iac-server.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "iac-server.serviceAccountName" . }}
+      securityContext:
+        sysctls:
+        - name: net.ipv4.ip_local_port_range
+          value: "10240 65000"
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.createDB }}
+      initContainers:
+      - name: create-db
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.createDb.image "global" .Values.global) }}
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        env:
+          {{- if eq .Values.config.ENABLE_SMP "true" }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "DATABASE_PASSWORD") | indent 10 }}
+          - name: DATABASE_URL
+            value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "postgres" "passwordVariableName" "DATABASE_PASSWORD" "keywordValueConnectionString" false) }}
+          {{- else }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "PGPASSWORD") | indent 10 }}
+          {{- end }}
+          - name: BILLING_METRICS_TOPIC
+            valueFrom:
+              configMapKeyRef:
+                name: billing-metrics-shared-config
+                key: BILLING_METRICS_TOPIC_NAME
+                optional: true #Do not remove this
+        envFrom:
+        - configMapRef:
+            name: {{ include "iac-server.name" . }}
+        {{- if eq .Values.config.ENABLE_SMP "true" }}
+        command: [
+          "/bin/sh",
+          "-c",
+          "psql $DATABASE_URL -c \"SELECT 1 FROM pg_database WHERE datname = '{{.Values.config.POSTGRES_DB}}'\" | grep -q 1 || psql $DATABASE_URL -c \"CREATE DATABASE {{.Values.config.POSTGRES_DB}}\""
+        ]
+        volumeMounts:
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | nindent 12}}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+        {{- else }}
+        command: [
+          "/bin/sh",
+          "-c",
+          "psql -w -h $POSTGRES_HOST -U $POSTGRES_USER -d postgres -tc \"SELECT 1 FROM pg_database WHERE datname = '{{.Values.config.POSTGRES_DB}}'\" | grep -q 1 || psql -w -h $POSTGRES_HOST -U $POSTGRES_USER -d postgres -c \"CREATE DATABASE {{.Values.config.POSTGRES_DB}}\""
+        ]
+        {{- end }}
+      {{- end }}
+      containers:
+      - name: {{ include "iac-server.name" . }}
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        env:
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10 }}
+          {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCACertPath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 10 }}
+          {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD" ) | indent 10 }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "DATABASE_PASSWORD") | indent 10 }}
+          - name: DATABASE_URL
+            {{- if eq .Values.config.ENABLE_SMP "true" }}
+            value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "$(POSTGRES_DB)" "passwordVariableName" "DATABASE_PASSWORD" "keywordValueConnectionString" false) }}
+            {{- else }} 
+            value: postgresql://$(POSTGRES_USER)@{{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" $) }}:5432/{{.Values.config.POSTGRES_DB}}
+            {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "iac-server.name" . }}
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        {{- if .Values.lifecycleHooks }}
+        lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+        {{- end }}
+        volumeMounts:
+        {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | nindent 12 }}
+        {{- if .Values.extraVolumeMounts }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+        {{- end }}
+{{- if .Values.kafka.enabled }}
+            - name: kafka-certs
+              mountPath: /etc/kafka/certs
+              readOnly: true
+            - name: kafka-cluster-ca
+              mountPath: /etc/kafka/cluster-ca
+              readOnly: true
+{{- end }}
+        {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - {{ include "iac-server.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+        {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | nindent 8 }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+{{- if .Values.kafka.enabled }}
+        - name: kafka-certs
+          secret:
+            secretName: "{{ .Values.kafka.certs.secretName }}"
+            defaultMode: 0444
+        - name: kafka-cluster-ca
+          secret:
+            secretName: "{{ .Values.kafka.clusterCA.secretName }}"
+            defaultMode: 0444
+{{- end }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}

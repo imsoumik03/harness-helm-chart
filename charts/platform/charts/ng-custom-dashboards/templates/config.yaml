@@ -1,0 +1,75 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ng-custom-dashboards.name" . }}
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{- include "ng-custom-dashboards.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  AUTH_CLIENT_ID: CustomDashboards
+  BASEURL_ACCESS_CONTROL: http://access-control:9006
+  BASEURL_AUDIT_TRAIL: http://platform-service:9005
+  BASEURL_CCM: http://nextgen-ce:6340
+  BASEURL_CG_MANAGER: http://harness-manager:9090
+  BASEURL_NG_MANAGER: http://ng-manager:7090
+  API_GROUP_ID: '{{ .Values.config.apiGroupId }}'
+  EMBEDDED_GROUP_ID: '{{ .Values.config.embeddedGroupId }}'
+  ENV: '{{ .Values.config.env }}'
+  GUNICORN_CMD_ARGS: '{{ .Values.config.gunicornCmdArgs }}'
+  LOOKER_PUB_DOMAIN: '{{ .Values.config.lookerPubDomain }}'
+  LOOKER_PUB_SCHEME: '{{ .Values.config.lookerPubScheme }}'
+  LOOKERSDK_API_VERSION: '{{ .Values.config.lookerApiVersion }}'
+  LOOKERSDK_TIMEOUT: '{{ .Values.config.lookerTimeout }}'
+  LOOKERSDK_VERIFY_SSL: '{{ .Values.config.lookerVerifySsl }}'
+  LOOKERSDK_BASE_URL: '{{ .Values.config.lookerScheme }}://{{ .Values.config.lookerHost }}:{{ .Values.config.lookerPort }}'
+  CACHE_RELOAD_FREQUENCY: '{{ .Values.config.cacheReloadFrequency }}'
+  REDIS_LOCK_TIMEOUT: '{{ .Values.config.redisLockTimeout }}'
+  REDIS_HOST: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache" "unsetProtocol" true "excludePort" true ) | quote }}
+  REDIS_PORT: {{ include "harnesscommon.dbv3.redisPort" (dict "ctx" $ "database" "cache") | quote }}
+  OOTB_BASE_FOLDER_ID: '{{ .Values.config.ootbBaseFolderId }}'
+  OOTB_FOLDER_ID: '{{ .Values.config.ootbFolderId }}'
+  CUSTOMER_BASE_FOLDER_ID: '{{ .Values.config.customerBaseFolderId }}'
+  CUSTOMER_FOLDER_ID: '{{ .Values.config.customerFolderId }}'
+  LOOKER_PROJECT_NAME: '{{ .Values.config.lookerProjectName }}' # TODO - DEPRECATED as of PL-48595
+  LOOKER_PROJECT_PREFIX: '{{ .Values.config.lookerProjectPrefix }}'
+  MODEL_PREFIX: '{{ .Values.config.modelPrefix }}' # TODO - DEPRECATED as of PL-48595
+  REDIS_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  REDIS_SENTINEL_URLS: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache" "unsetProtocol" true) }}
+  REDIS_SENTINEL_MASTER_NAME: '{{ .Values.config.redisSentinelMasterName }}'
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.additionalConfigs "context" $) | nindent 2}}
+  {{- include "harnesscommon.secretsLoader.configContent" (dict "ctx" $ "databaseSecrets" (list 
+    (dict "dbtype" "redis" "usernamesecrets" (list "REDIS_USERNAME") "passwordsecrets" (list "REDIS_PASSWORD"))
+  )) | nindent 2}}
+
+{{- if .Values.global.monitoring.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: '{{ include "ng-custom-dashboards.name" . }}-statsd-exporter'
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    app: '{{ include "ng-custom-dashboards.name" . }}-statsd-exporter'
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  statsd_mapping.yml: |
+    mappings:
+    - match: dashboards.gunicorn.request.status.*
+      help: "http response code"
+      name: "dashboards_gunicorn_request_status_code"
+      labels:
+        status: "$1"
+        job: "dashboards_gunicorn_response_code"
+
+{{- end }}

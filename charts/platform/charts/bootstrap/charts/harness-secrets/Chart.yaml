@@ -1,0 +1,13 @@
+apiVersion: v2
+appVersion: 0.0.0
+dependencies:
+- name: common
+  repository: https://charts.bitnami.com/bitnami
+  version: 2.x.x
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart to create Harness secrets
+name: harness-secrets
+type: application
+version: 0.11.0

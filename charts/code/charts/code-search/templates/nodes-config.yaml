@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "codesearch.name" . }}-nodes
+  namespace: {{ .Release.Namespace }}
+data:
+  {{- if .Values.NODES}}
+  nodes.yaml: {{- .Values.NODES | toYaml | nindent 2 }}
+  {{- else}}
+  nodes.yaml: |
+  {{- range $i:=until (int .Values.instances) }}
+    code-search-{{ $i }}:
+      id: {{ $i }}
+      http_url: http://code-search-{{ $i }}.code-search-headless.{{ $.Release.Namespace }}.svc.cluster.local:9201/api
+  {{- end}}
+  {{- end}}

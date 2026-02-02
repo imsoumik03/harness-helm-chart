@@ -1,0 +1,734 @@
+# Default values for chaos-manager
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  loadbalancerURL: "test@harness.io"
+  airgap: false
+  ha: false
+  commonAnnotations: {}
+  commonLabels: {}
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  opa:
+    enabled: false
+  cd:
+    # -- Enable to install CD
+    enabled: true
+  istio:
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+      - "*"
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts:
+        - ""
+      gateways: []
+  # Enable if using ingress objects
+  ingress:
+    enabled: false
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    loadBalancerIP: "0.0.0.0"
+    className: "harness"
+    loadBalancerEnabled: true
+    hosts:
+      - ""
+    tls:
+      enabled: false
+      secretName: harness-ssl
+    nginx:
+      # -- Create Nginx Controller.  True will deploy a controller into your cluster
+      create: true
+    defaultbackend:
+      # -- Create will deploy a default backend into your cluster
+      create: true
+    objects:
+      annotations: {}
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    mongo:
+      # -- set false to configure external mongo and generate mongo uri protocol://hosts?extraArgs
+      installed: true
+      # --   set the mongo hosts if mongo.installed is set to false
+      hosts: [""]
+      # -- provide the passwordKey to reference mongo password
+      passwordKey: "mongo-test-pass"
+      # -- set the protocol for mongo uri
+      protocol: mongodb
+      # -- provide the secretname to reference mongo username and password
+      secretName: "test"
+      # -- provide the userKey to reference mongo username
+      userKey: "pass"
+      # -- set additional arguments to mongo uri
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      ## - set this to false if you want to use external redis cluster
+      installed: true
+      # --  provide host name for redis
+      hosts:
+        - "redis-url"
+      ## - key within secret containing password
+      passwordKey: "password"
+      ## - secret name containing external redis credentials
+      secretName: "redis-user-pass"
+      ## - key within secret containing username
+      userKey: "username"
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      # -- TimescaleDB secrets
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: IfNotPresent
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+monitoring:
+  port: 8889
+  path: /metrics
+## Platform Settings
+platform:
+  harness-manager:
+    featureFlags:
+      OPA: "OPA_PIPELINE_GOVERNANCE"
+      ADDITIONAL: "CHAOS_ENABLED"
+replicaCount: 1
+# TODO: remove this
+deployAsSts: false
+replicaCountSts: 0
+maxSurge: 1
+maxUnavailable: 0
+image:
+  registry: docker.io
+  repository: harness/smp-chaos-manager-signed
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.72.11"
+  digest: ""
+  #imagePullSecrets: ["chaos-regcred-secret"]
+chaosHubImage:
+  image:
+    registry: docker.io
+    repository: harness/enterprise-chaos-hub-signed
+    tag: 1.72.11
+    digest: ""
+ddcrImage:
+  image:
+    registry: docker.io
+    repository: harness/chaos-ddcr
+    tag: 1.72.1
+    digest: ""
+ddcrFaultsImage:
+  image:
+    registry: docker.io
+    repository: harness/chaos-ddcr-faults
+    tag: 1.72.1
+    digest: ""
+ddcrLibImage:
+  image:
+    registry: docker.io
+    repository: harness/chaos-ddcr-faults
+    tag: 1.72.1
+    digest: ""
+logWatcherImage:
+  image:
+    registry: docker.io
+    repository: harness/chaos-log-watcher
+    tag: 1.72.1
+    digest: ""
+# Please run this job sequentially for each released version of Chaos
+jobs:
+  bg_processor:
+    image:
+      registry: docker.io
+      tag: "1.72.11"
+      repository: harness/smp-chaos-bg-processor-signed
+      pullPolicy: Always
+      digest: ""
+      imagePullSecrets: []
+    cronJobs:
+      one:
+        schedule: "0 */2 * * *"
+        successfulJobsHistoryLimit: "1"
+        failedJobsHistoryLimit: "3"
+        startingDeadlineSeconds: "300"
+        activeDeadlineSeconds: "240"
+        backoffLimit: "5"
+        restartPolicy: OnFailure
+        configMapName: chaos-bg-processor-config-every-2h
+      two:
+        schedule: "0 */24 * * *"
+        successfulJobsHistoryLimit: "1"
+        failedJobsHistoryLimit: "3"
+        startingDeadlineSeconds: "300"
+        activeDeadlineSeconds: "240"
+        backoffLimit: "5"
+        restartPolicy: OnFailure
+        configMapName: chaos-bg-processor-config-every-24h
+#allowedOrigins: "*.*.*.*"
+configmap: {}
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+nameOverride: ""
+fullnameOverride: ""
+metrics:
+  metricsPort: "8889"
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+progressDeadlineSeconds: 600
+#runAsUser: 65534
+#runAsNonRoot: true
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 8080
+  targetport: 8080
+  grpcport: 8081
+  targetgrpcport: 8081
+virtualService:
+  annotations: {}
+  objects:
+    - name: chaos-manager-service
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/chaos/manager/api/'
+          backend:
+            service:
+              name: chaos-manager-service
+ingress:
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/chaos/manager/api(/|$)(.*)'
+          backend:
+            service:
+              name: chaos-manager-service
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 600m
+    memory: 512Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes:
+  - name: chaos-dashboard-config
+    configMap:
+      name: chaos-dashboard-config
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts:
+  - name: chaos-dashboard-config
+    mountPath: /tmp/dashboard.yaml
+    subPath: dashboard.yaml
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+database:
+  mongo:
+    harnesschaos:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    cache:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+secrets:
+  default:
+    SERVICE_DISCOVERY_TOKEN: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    CHAOS_MANAGER_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    CHAOS_K8S_IFS_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    CHAOS_MACHINE_IFS_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    CHAOS_LINUX_IFS_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    NG_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    PIPELINE_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    JWT_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+    JWT_IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    BASIC_AUTH_PASSWORD: "chaos-admin"
+    BASIC_AUTH_USERNAME: "chaos-admin"
+    LOG_SERVICE_TOKEN: "c76e567a-b341-404d-a8dd-d9738714eb82"
+    ENTERPRISE_HUB_SECRET: "dummy"
+    ENTERPRISE_HUB_TOKEN: "dummy"
+    SEGMENT_API_KEY: "dummy"
+    APP_AI_SECRET: "dummy"
+    FF_SDK_KEY: ""
+    OPENAI_API_KEY: "dummy"
+    # Keys having empty values need to be commented, otherwise helper function will generate random value for same.
+    # SEGMENT_PLG_UTILITIES_KEY: ""
+    # This is required for Chaos-Manager & BG-Processor
+    SLACK_URL: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        SERVICE_DISCOVERY_TOKEN: ""
+        CHAOS_MANAGER_JWT_SECRET: ""
+        CHAOS_K8S_IFS_JWT_SECRET: ""
+        CHAOS_MACHINE_IFS_JWT_SECRET: ""
+        CHAOS_LINUX_IFS_JWT_SECRET: ""
+        NG_JWT_SECRET: ""
+        PIPELINE_JWT_SECRET: ""
+        JWT_SECRET: ""
+        JWT_IDENTITY_SERVICE_SECRET: ""
+        SEGMENT_API_KEY: ""
+        ENTERPRISE_HUB_SECRET: ""
+        ENTERPRISE_HUB_TOKEN: ""
+        APP_AI_SECRET: ""
+        BASIC_AUTH_PASSWORD: ""
+        BASIC_AUTH_USERNAME: ""
+        LOG_SERVICE_TOKEN: ""
+        FF_SDK_KEY: ""
+        OPENAI_API_KEY: ""
+        # Keys having empty values need to be commented, otherwise helper function will generate random value for same.
+        # SEGMENT_PLG_UTILITIES_KEY: ""
+        # This is required for Chaos-Manager & BG-Processor
+        SLACK_URL: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          SERVICE_DISCOVERY_TOKEN:
+            name: ""
+            property: ""
+          CHAOS_MANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          CHAOS_K8S_IFS_JWT_SECRET:
+            name: ""
+            property: ""
+          CHAOS_MACHINE_IFS_JWT_SECRET:
+            name: ""
+            property: ""
+          CHAOS_LINUX_IFS_JWT_SECRET:
+            name: ""
+            property: ""
+          NG_JWT_SECRET:
+            name: ""
+            property: ""
+          PIPELINE_JWT_SECRET:
+            name: ""
+            property: ""
+          JWT_SECRET:
+            name: ""
+            property: ""
+          JWT_IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+          SEGMENT_API_KEY:
+            name: ""
+            property: ""
+          ENTERPRISE_HUB_SECRET:
+            name: ""
+            property: ""
+          ENTERPRISE_HUB_TOKEN:
+            name: ""
+            property: ""
+          APP_AI_SECRET:
+            name: ""
+            property: ""
+          BASIC_AUTH_PASSWORD:
+            name: ""
+            property: ""
+          BASIC_AUTH_USERNAME:
+            name: ""
+            property: ""
+          LOG_SERVICE_TOKEN:
+            name: ""
+            property: ""
+          FF_SDK_KEY:
+            name: ""
+            property: ""
+          OPENAI_API_KEY:
+            name: ""
+            property: ""
+            # Keys having empty values need to be commented, otherwise helper function will generate random value for same.
+          # SEGMENT_PLG_UTILITIES_KEY:
+          #   name: ""
+          #   property: ""
+          # This is required for DB Upgrade-Agent & BG-Processor
+          SLACK_URL:
+            name: ""
+            property: ""
+config:
+  REDIS_CACHE_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache") }}'
+  REDIS_CACHE_DATABASE: "0"
+  REDIS_CACHE_NAMESPACE: ""
+  REDIS_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  REDIS_DATABASE: "0"
+  REDIS_EVENTS_FWK_NAMESPACE: ""
+  REDIS_STREAM_ENV: ""
+  ENTITY_CRUD_REDIS_STREAM: entity_crud
+  DISCOVERY_CRUD_REDIS_STREAM: discovery_crud
+  SRM_CHANGE_SOURCE_REDIS_STREAM: "chaos_change_events"
+  LOG_SERVICE_EXTERNAL_ENDPOINT: '{{ .Values.global.loadbalancerURL }}/gateway/log-service'
+  LOG_WATCHER_IMAGE: '{{ include "chaos-manager.logWatcherImage" . }}'
+  DEFAULT_DDCR_IMAGE: '{{ include "chaos-manager.ddcrImage" . }}'
+  DEFAULT_DDCR_FAULT_IMAGE: '{{ include "chaos-manager.ddcrFaultsImage" . }}'
+  DEFAULT_DDCR_LIB_IMAGE: '{{ include "chaos-manager.ddcrLibImage" . }}'
+  LINUX_INFRA_SERVER_ENDPOINT: '{{ .Values.global.loadbalancerURL }}/gateway/chaos/lserver/api'
+  MACHINE_INFRA_SERVER_ENDPOINT: '{{ .Values.global.loadbalancerURL }}/gateway/chaos/mserver/api'
+  METRIC_PORT: '{{ .Values.metrics.metricsPort }}'
+  DEPLOY_MODE: "KUBERNETES_ONPREM"
+  PLATFORM_SERVICE_ENDPOINT: "http://platform-service:9005/api"
+  PIPELINE_SERVICE_ENDPOINT: "http://pipeline-service:12001/api"
+  K8S_INFRA_SERVER_ENDPOINT: "http://chaos-k8s-ifs-service:6000"
+  LINUX_INFRA_SERVER_SVC_ENDPOINT: "http://chaos-linux-ifs-service:4000"
+  MACHINE_INFRA_SERVER_SVC_ENDPOINT: "http://chaos-machine-ifs-service:4000"
+  DEFAULT_CHAOS_EXPERIMENT_RUN_LIMIT: "100000"
+  DEFAULT_GAME_DAY_RUNS_PER_GAME_DAY_LIMIT: "1000"
+  DEFAULT_EXPERIMENTS_PER_GAME_DAY_RUN_LIMIT: "20"
+  SAAS_ENABLED: "false"
+  APP_AI_ENDPOINT: ""
+  ENTERPRISE_HUB_BRANCH_NAME: release/1.72.x
+  EXPERIMENT_HELPER_IMAGE_VERSION: "1.72.0"
+  SKIP_SECURE_VERIFY: "true"
+  DEFAULT_CHAOS_EXPERIMENT_LIMIT: "2000"
+  DEFAULT_CHAOS_HUB_LIMIT: "30"
+  DEFAULT_CHAOS_GAMEDAY_LIMIT: "200"
+  DEFAULT_CHAOS_HUB_SIZE: "200"
+  DEFAULT_PARALLEL_CHAOS_EXPERIMENT_RUNS: "500"
+  LOG_INDIRECT_UPLOAD: "true"
+  IMAGE_REGISTRY_SECRET: ""
+  CHAOS_V2_ONBOARDING: "true"
+  CHAOS_IMAGEREGISTRY_DEV: "false"
+  CHAOS_AI_RECOMMENDATION_DEV: "false"
+  FF_CLIENT_CONFIG_URL: ""
+  FF_CLIENT_EVENT_URL: ""
+  V2_ONBOARDING_GO_ROUTINE_COUNT: "3"
+  USE_LEGACY_FEATURE_FLAGS: "true"
+  LINUX_INFRA_COMPATIBLE_VERSIONS: '["1.28.0","1.29.0","1.30.0","1.31.0","1.32.0","1.33.0","1.34.0","1.35.0","1.36.0","1.37.0","1.38.0","1.39.0","1.40.0","1.41.0","1.42.0","1.43.0","1.44.0","1.45.0","1.46.0","1.47.0","1.48.0","1.49.0","1.50.0","1.51.0","1.52.0","1.53.0","1.54.0","1.55.0","1.56.0","1.57.0","1.58.0","1.59.0","1.60.0","1.61.0", "1.61.1","1.62.0","1.63.0","1.64.0","1.65.0","1.66.0","1.67.0","1.68.0","1.69.0","1.70.0","1.71.0","1.72.0"]'
+  WINDOWS_INFRA_COMPATIBLE_VERSIONS: '["1.32.0","1.32.1","1.33.0","1.34.0","1.35.0","1.36.0","1.37.0","1.38.0","1.39.0","1.40.0","1.41.0","1.42.0","1.43.0","1.44.0","1.45.0","1.46.0","1.47.0","1.48.0","1.49.0","1.50.0","1.51.0","1.52.0","1.53.0","1.54.0","1.55.0","1.56.0","1.57.0","1.58.0","1.59.0","1.60.0","1.61.0", "1.61.1","1.62.0","1.63.0","1.64.0","1.65.0","1.66.0","1.67.0","1.67.1","1.67.2","1.68.0","1.69.0","1.70.0","1.71.0","1.72.0"]'
+  CF_INFRA_COMPATIBLE_VERSIONS: '["1.46.0","1.47.0","1.48.0","1.49.0","1.50.0","1.51.0","1.52.0","1.53.0","1.54.0","1.55.0","1.56.0","1.57.0","1.58.0","1.59.0","1.60.0","1.61.0","1.62.0","1.63.0","1.64.0","1.65.0","1.66.0","1.67.0","1.68.0","1.69.0","1.70.0","1.71.0","1.72.0"]'
+  CONTAINER_INFRA_COMPATIBLE_VERSIONS: '["1.62.0","1.63.0","1.64.0","1.65.0","1.66.0","1.67.0","1.68.0","1.69.0","1.70.0","1.71.0","1.72.0"]'
+  EXTERNAL_ENDPOINTS: ""
+  ACCESS_CONTROL_ENDPOINT: http://access-control:9006/api
+  NG_MANAGER_ENDPOINT: http://ng-manager:7090
+  CG_MANAGER_ENDPOINT: "http://harness-manager:9090"
+  INFRA_COMPATIBLE_VERSIONS: '["0.13.0","0.14.0","1.15.0","1.16.0","1.17.0","1.18.0","1.19.0","1.20.0","1.21.0","1.22.0","1.23.0","1.24.0","1.25.0","1.26.0","1.27.0","1.28.0","1.29.0","1.30.0","1.31.0","1.32.0","1.33.0","1.34.0","1.35.0","1.36.0","1.37.0","1.38.0","1.39.0","1.40.0","1.41.0","1.43.0","1.44.0","1.45.0","1.46.0","1.47.0","1.48.0","1.49.0","1.50.0","1.51.0","1.52.0","1.53.0","1.54.0","1.55.0","1.56.0","1.57.0","1.58.0","1.59.0","1.60.0","1.61.0","1.62.0","1.63.0","1.64.0","1.65.0","1.66.0","1.67.0","1.68.0","1.69.0","1.70.0","1.71.0","1.72.0"]'
+  PG_DBNAME: "harness"
+  PG_MIGRATION_PATH: "/hce/migrations"
+  RUN_POSTGRES_MIGRATION: "true"
+  PG_HOST: '{{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}'
+  PG_PORT: '{{ include "harnesscommon.dbconnectionv2.timescalePort" (dict "context" $) }}'
+  SERVER_VERSION: '1.72.0'
+  USE_LOCAL_HUB: "false"
+  VECTOR_DATABASE: "mongodb"
+  LLM_SERVER: "genai"
+  WEAVIATE_ENDPOINT: ""
+  GENAI_LLM_MODEL: "gpt-4o-mini"
+  GENAI_EMBEDDING_MODEL: "embeddingAda002"
+  GENAI_LLM_PROVIDER: "openai"
+  GENAI_EMBEDDING_PROVIDER: "azureopenai"
+  RECOMMENDATION_TRACK_EVENT_TIME_WINDOW: "1h"
+  RECOMMENDATION_IGNORE_EVENT_THRESHOLD: "3"
+  CHAOS_PIPELINE_RECOMMENDATIONS_SYNC_INTERVAL: "10m"
+  CHAOS_PIPELINE_RECOMMENDATIONS_GO_ROUTINE_COUNT: "3"
+  # Billing Configuration
+  BILLING_ENABLED: "false"
+  FAULT_LIMIT: "5"
+  PROBE_LIMIT: "5"
+  ACTION_LIMIT: "5"
+  DEFAULT_HLU_WEIGHT: "1"
+  ADDITIONAL_HLU_WEIGHT: "0.5"
+  BILLING_CRON_TIME: "00:00"
+  # Kafka Configuration
+  KAFKA_CONFLUENT_BOOTSTRAP_SERVER_URLS: "kafka-platform-kafka-bootstrap:9093"
+  KAFKA_CONFLUENT_SECURITY_PROTOCOL: "SSL"
+  KAFKA_CONFLUENT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "https"
+  KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: "http://schema-registry-service:8081"
+  KAFKA_CONFLUENT_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: ""
+  # TLS Certificate paths
+  KAFKA_PRODUCER_TLS_CA_FILE: "/etc/kafka/cluster-ca/ca.crt"
+  KAFKA_PRODUCER_TLS_CERT_FILE: "/etc/kafka/certs/user.crt"
+  KAFKA_PRODUCER_TLS_KEY_FILE: "/etc/kafka/certs/user.key"
+rbac:
+  rules: []
+pdb:
+  create: false

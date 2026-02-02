@@ -1,0 +1,52 @@
+{{- if .Values.job.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ff-cron
+  labels:
+    app.kubernetes.io/instance: {{ include "ff-server.name" . }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "ff-server.name" . }}-cronjob
+    app.kubernetes.io/part-of: harness-feature-flags
+    app.kubernetes.io/component: cron
+    helm.sh/chart: {{ include "ff-server.chart" . }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.job.schedule }}
+  concurrencyPolicy: Allow
+  successfulJobsHistoryLimit: {{ .Values.job.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.job.failedJobsHistoryLimit }}
+  startingDeadlineSeconds: {{ .Values.job.startingDeadlineSeconds }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.job.backoffLimit }}
+      template:
+        spec:
+          restartPolicy: OnFailure
+          {{ include "ff-server.pullSecrets" . | nindent 10 }}
+          serviceAccountName: {{ include "ff-server.serviceAccountName" . }}
+          shareProcessNamespace: true
+          containers:
+          - name: {{ include "ff-server.name" . }}-cronjob
+            image: {{ include "common.images.image" (dict "imageRoot" .Values.job.image "global" .Values.global) }}
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+            - name: SERVICE_URL
+              value: http://ff-admin-server:80/api/1.0
+            - name: REQUEST_ENDPOINT
+              value: admin/triggers/ccm
+            - name: REQUEST_METHOD
+              value: POST
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12 }}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

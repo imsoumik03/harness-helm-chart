@@ -1,0 +1,42 @@
+apiVersion: v2
+appVersion: 1.0.0
+dependencies:
+- condition: global.database.minio.installed
+  name: minio
+  repository: file://./minio
+  version: 17.0.x
+- condition: global.database.mongo.installed
+  name: mongodb
+  repository: https://charts.bitnami.com/bitnami
+  version: 13.1.2
+- condition: global.database.timescaledb.installed
+  name: timescaledb
+  repository: file://./timescaledb
+  version: 0.10.x
+- condition: global.database.redis.installed
+  name: redis
+  repository: file://./redis
+  version: 0.8.x
+- condition: global.database.postgres.installed
+  name: postgresql
+  repository: file://./postgresql
+  version: 17.0.2
+- condition: global.database.clickhouse.enabled
+  name: clickhouse
+  repository: https://charts.bitnami.com/bitnami
+  version: 2.1.0
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+- condition: global.database.elasticsearch.installed
+  name: elasticsearch
+  repository: https://charts.bitnami.com/bitnami
+  version: 19.16.1
+- condition: global.database.kafka.enabled
+  name: kafka
+  repository: https://charts.bitnami.com/bitnami
+  version: 32.2.18
+description: A Helm chart for Kubernetes
+name: database
+type: application
+version: 0.13.35

@@ -1,0 +1,499 @@
+# Default values for audit-event-streaming
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets
+# --global.imageRegistry Global Docker image registry
+# --global.imagePullSecrets Global Docker registry secret names as an array
+# --global.storageClass Global StorageClass for Persistent Volume(s)
+global:
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  ha: false
+  jfr:
+    enabled: false
+  stackDriverLoggingEnabled: false
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+      timescaledb:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      gateways:
+      hosts:
+  imagePullSecrets: []
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+# --mongoHosts List of mongo hosts
+mongoHosts: []
+# --replicaCount Number of pods
+##
+replicaCount: 1
+redis:
+  protocol: ""
+  hosts: []
+  secretName: ""
+  userKey: ""
+  passwordKey: ""
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+database:
+  mongo:
+    audits:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+# -- deployment.updateStrategy.type Deployment strategy type
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#update-strategies
+## e.g:
+updateStrategy:
+  type: RollingUpdate
+# -- schedulerName Specifies the schedulerName, if it's nil uses kube-scheduler
+## https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+# -- terminationGracePeriodSeconds In seconds, time the given to the pod needs to terminate gracefully
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods
+##
+terminationGracePeriodSeconds: "180"
+# -- Configurations for Harness application
+config:
+  AUDIT_CLIENT_BASEURL: http://platform-service:9005/api/
+  BATCH_CURSOR_SIZE: "1000"
+  BATCH_LIMIT: "10000"
+  BATCH_MAX_RETRIES: "3"
+  SUMO_LOGIC_BATCH_CURSOR_SIZE: "1000"
+  SUMO_LOGIC_BATCH_LIMIT: "1000"
+  SUMO_LOGIC_BATCH_MAX_RETRIES: "2"
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  EVENT_COLLECTION_BATCH_JOB_CRON: 0 */30 * * * *
+  GRPC_MANAGER_AUTHORITY: harness-manager:9879
+  GRPC_MANAGER_TARGET: harness-manager:9879
+  JAVA_ADVANCED_FLAGS: '{{- include "harnesscommon.jfr.v1.printJavaAdvancedFlags" (dict "ctx" $) }}'
+  LOGGING_LEVEL: INFO
+  MEMORY: 768m
+  MONGO_MAX_DOCUMENT_LIMIT: "10000"
+  MONGO_MAX_OPERATION_TIME_IN_MILLIS: "30000"
+  NG_MANAGER_CLIENT_BASEURL: http://ng-manager:7090/
+  REPLICA: "1"
+  REDISSON_PING_CONNECTION_INTERVAL_IN_MILLIS: "0"
+jfr:
+  image:
+    registry: registry.access.redhat.com
+    repository: ubi8/ubi-minimal
+    pullPolicy: Always
+    tag: "8.9-1029"
+    digest: ""
+    imagePullSecrets: []
+## Pod Disruption Budget configuration in HA mode.
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+##
+java:
+  memory: 768m
+## image version
+## ref: https://hub.docker.com/r/harness/accesscontrol-service-signed/tags
+# --image.registry ; image registry
+# --image.repository ; image repository
+# --image.tag ; image tag (immutable tags are recommended)
+# --image.digest ; image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+# --image.pullPolicy Image pull policy
+# --image.imagePullSecrets Specify docker-registry secret names as an array
+image:
+  registry: docker.io
+  repository: harness/audit-event-streaming-signed
+  pullPolicy: IfNotPresent
+  tag: "1.71.0"
+  digest: ""
+  imagePullSecrets: []
+## -- mongo secrets reference passed to the application
+##
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+# --nameOverride String to partially override common.names.fullname template (will maintain the release name)
+##
+nameOverride: ""
+# --fullnameOverride String to fully override common.names.fullname template
+##
+fullnameOverride: ""
+## Specifies whether a ServiceAccount should be created
+##
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+containerSecurityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 9006
+## Pod resource requests and limits
+## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+# --resources.limits The resources limits for the containers
+# --resources.requests The requested resources for the containers
+##
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 2Gi
+shutdownHooksEnabled: false
+# --  lifecycleHooks for the container(s) to automate configuration before or after startup
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+## Configure extra options for liveness probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+# -- livenessProbe.enabled Enable livenessProbe
+# -- livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+# -- livenessProbe.periodSeconds Period seconds for livenessProbe
+# -- livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+# -- livenessProbe.failureThreshold Failure threshold for livenessProbe
+# -- livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: false
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold:
+## Configure extra options for readiness probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+# -- readinessProbe.enabled Enable readinessProbe
+# -- readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+# -- readinessProbe.periodSeconds Period seconds for readinessProbe
+# -- readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+# -- readinessProbe.failureThreshold Failure threshold for readinessProbe
+# -- readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: false
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 10
+## Configure extra options for startupProbe probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+# -- startupProbe.enabled Enable startupProbe
+# -- startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+# -- startupProbe.periodSeconds Period seconds for startupProbe
+# -- startupProbe.timeoutSeconds Timeout seconds for startupProbe
+# -- startupProbe.failureThreshold Failure threshold for startupProbe
+# -- startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 0
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 60
+# -- extraEnvVars Extra environment variables to be set on container
+## e.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: "bar"
+##
+extraEnvVars: []
+# -- extraEnvVarsCM ConfigMap with extra environment variables
+##
+extraEnvVarsCM: ""
+# -- extraEnvVarsSecret Secret with extra environment variables
+##
+extraEnvVarsSecret: ""
+# --  extraVolumes Optionally specify extra list of additional volumes for ; pods
+##
+# e.g.
+# extraVolumes:
+# - name: service-account
+#   secret:
+#     secretName: redis-ca
+#     items:
+#     - key: redis-labs-ca-truststore
+#       path: redis_labs_ca_truststore
+# - name: stackdriver
+#   secret:
+#     secretName: stackdriver-creds
+#     items:
+#     - key: stackdriver-key-file
+#       path: stackdriver.json
+# - name: dumps
+#   hostPath:
+#     path: /var/dumps
+#     type: DirectoryOrCreate
+extraVolumes: []
+# --  extraVolumeMounts Optionally specify extra list of additional volumeMounts for ; container(s)
+##
+# e.g.
+# extraVolumeMounts:
+# - name: service-account
+#   mountPath: /opt/harness/svc
+# - name: stackdriver
+#   mountPath: /opt/harness/monitoring
+# - name: dumps
+#   mountPath: /opt/harness/dumps
+extraVolumeMounts: []
+# --initContainers Add additional init containers to the ; pods
+## e.g:
+## initContainers:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+initContainers: []
+# --sidecars Add additional sidecar containers to the ; pods
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+sidecars: []
+# --  affinity Affinity for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## Note: podAffinityPreset, podAntiAffinityPreset, and nodeAffinityPreset will be ignored when it's set
+##
+affinity: {}
+# --  nodeSelector Node labels for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/user-guide/node-selection/
+##
+nodeSelector: {}
+# --  tolerations Tolerations for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+mongoSSL:
+  enabled: false
+# -- additionalConfigs Additional configurations for the deployment
+additionalConfigs: {}
+java17flags: ""
+javaAdvancedFlags: "-XX:NativeMemoryTracking=summary -XX:-UseBiasedLocking -XX:+UseG1GC"
+virtualService:
+  annotations: {}
+ingress:
+  annotations: {}
+secrets:
+  default: {}
+  kubernetesSecrets: []
+  secretManagement:
+    externalSecretsOperator: []

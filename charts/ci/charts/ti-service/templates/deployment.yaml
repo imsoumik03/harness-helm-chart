@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ti-service.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ti-service.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ti-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+        {{- if .Values.podAnnotations }}
+          {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        app: ti-service
+        {{- include "ti-service.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "ti-service.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ti-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      initContainers:
+      {{- if .Values.global.database.mongo.installed }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+      {{- end }}
+      {{- if .Values.global.database.timescaledb.installed }}
+        {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-timescale" "appName" "timescaledb-single-chart") | nindent 8}}
+      {{- end }}
+      containers:
+        - name: ti-service
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+              {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- toYaml .Values.probes | nindent 10}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          ports:
+          - name: http-ti-service
+            containerPort: {{.Values.service.port}}
+            protocol: "TCP"
+          env:
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10 }}
+          {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCACertPath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_CERT_PATH" )) | indent 10 }}
+          {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD" ) | indent 10 }}
+          {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $  "userVariableName" "TI_SERVICE_TIMESCALE_USERNAME" "passwordVariableName" "TI_SERVICE_TIMESCALE_PASSWORD" "sslModeVariableName" "TI_SERVICE_TIMESCALE_SSL_MODE" "sslModeValue" .Values.timescaledb.sslMode "enableSslVariableName" "TI_SERVICE_TIMESCALE_ENABLE_SSL" "certPathVariableName" "TI_SERVICE_TIMESCALE_SSL_CERT_PATH" "certPathValue" "/opt/harness/svc/timescale_ca.pem")  | indent 10}}
+          - name: TI_SERVICE_TIMESCALE_HOST
+            value: {{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}
+          - name: TSDB_URL
+            value: '{{ include "harnesscommon.dbconnectionv2.timescaleConnection" (dict "protocol" "postgres" "userVariableName" "TI_SERVICE_TIMESCALE_USERNAME" "passwordVariableName" "TI_SERVICE_TIMESCALE_PASSWORD" "database" "harnessti" "addSSLModeArg" true "context" $) }}'
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "ti-harness") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "ti-harness" "userVariableName" "TI_SERVICE_MONGODB_USERNAME" "passwordVariableName" "TI_SERVICE_MONGODB_PASSWORD") | indent 10 }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "ti-harness" "connectionURIVariableName" "TI_SERVICE_MONGODB_CONN_STR") | indent 10 }}
+         {{- if .Values.extraEnvVars }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 10 }}
+          {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          envFrom:
+          - configMapRef:
+              name: ti-service
+          volumeMounts:
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
+          {{- end }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 10 }}
+          {{- if .Values.global.database.timescaledb.sslEnabled }}
+          - name: timescaledb-cert
+            mountPath: /opt/harness/svc
+          {{- end }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 10 }}
+      volumes:
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+      {{- if .Values.global.database.timescaledb.sslEnabled }}
+      - name: timescaledb-cert
+        secret:
+          secretName: {{ .Values.global.database.timescaledb.certName }}
+          items:
+          - key: {{ .Values.global.database.timescaledb.certKey }}
+            path: timescale_ca.pem
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - ti-service
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

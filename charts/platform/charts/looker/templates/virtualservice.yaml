@@ -1,0 +1,66 @@
+{{- if .Values.global.istio.enabled }}
+{{- $fullName := include "looker.fullname" . -}}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: looker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.virtualService.annotations }}
+    {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.virtualService.annotations "context" $) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.global.commonAnnotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  gateways:
+    {{- if .Values.istio.gateway.create }}
+    - istio-system/looker
+    {{- else if .Values.global.istio.gateway.create }}
+    - istio-system/public
+    {{- else }}
+    {{- range .Values.global.istio.virtualService.gateways }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+  hosts:
+    {{- if .Values.istio.virtualService.enabled }}
+    {{- range .Values.istio.virtualService.hosts }}
+    - {{ . }}
+    {{- end }}
+    {{- else }}
+    {{- range .Values.global.istio.virtualService.hosts }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+  http:
+  - name: looker-web
+    match:
+    - uri:
+        prefix: /
+    - uri:
+        prefix: /api/internal/
+    route:
+    - destination:
+        port:
+          number: 9999
+        host: looker-web
+  - name: hrns-looker-api
+    match:
+    - uri:
+        prefix: /api/
+    - uri:
+        prefix: /api-docs/
+    - uri:
+        prefix: /versions
+    route:
+    - destination:
+        port:
+          number: 19999
+        host: hrns-looker-api
+{{ end }}

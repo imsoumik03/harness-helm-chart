@@ -1,0 +1,9 @@
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.4.10
+- name: minio
+  repository: file://../minio
+  version: 17.0.15
+digest: sha256:eda50d02e4cc5781ffae3dd1d07acb2d4832c3bfd45de88d127ada8ccc34a8dc
+generated: "2026-01-27T15:25:07.481357+05:30"

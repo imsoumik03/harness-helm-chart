@@ -1,0 +1,436 @@
+# Default values for policy-mgmt.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  loadbalancerURL: https://example.com
+  airgap: "false"
+  imagePullSecrets: []
+  commonAnnotations: {}
+  commonLabels: {}
+  istio:
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+      - "*"
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts:
+        - ""
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    enabled: false
+    objects:
+      annotations: {}
+    hosts:
+      - "my-host.example.org"
+    tls:
+      enabled: false
+      secretName: harness-cert
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+      timescaledb:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    redis:
+      installed: true
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      ## Example for SSL: "sslmode=verify-ca&sslrootcert=server-ca.pem&sslcert=client-cert.pem&sslkey=client-key.pem"
+      extraArgs: ""
+      ## - SSL configuration
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        certFileKey: ""
+        keyFileKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+  ## -- initContainer for Harness application waits
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+cron:
+  enable: false
+monitoring:
+  port: 3535
+  path: /metrics
+postgres:
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+database:
+  redis:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+replicaCount: 1
+image:
+  registry: docker.io
+  repository: harness/policy-mgmt
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.35.2"
+  digest: ""
+  imagePullSecrets: []
+appConfigs:
+  gitxEnabled: "true"
+  debug: "true"
+  gitxAuthority: "ng-manager:13002"
+  gitxUrl: "ng-manager:13002"
+config:
+  APP_DATABASE_DRIVER: "postgres"
+  APP_HTTP_BIND: ":3000"
+  POLICY_MGMT_SERVICE_METRICS_PORT: "3535"
+  APP_DEBUG: "{{ .Values.appConfigs.debug }}"
+  APP_ON_PREM: "true"
+  # Protocol needs to be set to empty because service uses redis library which doesn't accept protocol based strings
+  APP_NG_BASE_URL: "http://ng-manager:7090"
+  APP_ACCESS_CONTROL_BASE_URL: "http://access-control:9006"
+  APP_PLATFORM_BASE_URL: "http://platform-service:9005"
+  APP_DATABASE_DBNAME: "policy-mgmt"
+  APP_ENABLE_AUDIT_TRAIL: "true"
+  APP_EVENTS_FRAMEWORK_REDIS_SSL_ENABLED: "false"
+  APP_EVENTS_FRAMEWORK_REDIS_USE_PASSWORD: '{{ include "harnesscommon.dbconnectionv2.isRedisPasswordSet" (dict "context" $ "passwordVariableName" "APP_EVENTS_FRAMEWORK_REDIS_PASSWORD" "localRedisCtx" .Values.database.redis.events) }}'
+  APP_EVENTS_FRAMEWORK_REDIS_SENTINEL_MASTER_NAME: "harness-redis"
+  APP_EVENTS_FRAMEWORK_REDIS_SENTINEL_URLS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  APP_EVENTS_FRAMEWORK_REDIS_USE_SENTINEL: "{{ .Values.global.database.redis.installed }}"
+  APP_EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  APP_GITX_ENABLED: "{{ .Values.appConfigs.gitxEnabled }}"
+  APP_GITX_AUTHORITY: "{{ .Values.appConfigs.gitxAuthority }}"
+  APP_GITX_URL: "{{ .Values.appConfigs.gitxUrl }}"
+  APP_FEATURE_FLAGS_ENABLED: "false"
+  HARNESS_SERVICES_PIPELINE_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_PIPELINE_CLIENT_BASEURL: "http://pipeline-service:12001/"
+  HARNESS_SERVICES_PIPELINE_JWT_IDENTITY: "Pipeline"
+  ## - SSL mode for Postgres connection (disable, require, verify-ca, verify-full)
+  PG_SSLMODE: "disable"
+# imagePullSecrets:
+#   - name: gcr-json-key
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 3000
+probes:
+  livenessProbe:
+    httpGet:
+      path: /api/v1/system/health
+      port: http
+      scheme: HTTP
+    timeoutSeconds: 10
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe:
+    httpGet:
+      path: /api/v1/system/health
+      port: http
+      scheme: HTTP
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 10
+  startupProbe:
+    httpGet:
+      path: /api/v1/system/health
+      port: http
+      scheme: HTTP
+    initialDelaySeconds: 60
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 30
+metricsService:
+  annotations: {}
+  type: ClusterIP
+  port: 3535
+virtualService:
+  annotations: {}
+  objects:
+    - name: policy-mgmt
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/pm/'
+ingress:
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+        nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/pm(/|$)(.*)'
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+# Extra volume mounts for the policy-mgmt container
+extraVolumeMounts: []
+# - name: postgres-certs
+#   mountPath: /opt/harness/svc/postgres
+
+# Extra volumes for the policy-mgmt pod
+extraVolumes: []
+# - name: postgres-certs
+#   secret:
+#     secretName: postgres-certs
+#     defaultMode: 0600
+#     items:
+#     - key: server-ca.pem
+#       path: server-ca.pem
+#     - key: client-cert.pem
+#       path: client-cert.pem
+#     - key: client-key.pem
+#       path: client-key.pem
+
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+progressDeadlineSeconds: 600
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+terminationGracePeriodSeconds: "30"
+terminationMessage: {}
+# Postgres secret value and key
+postgresPassword:
+  name: postgres
+  key: postgres-password
+secrets:
+  default:
+    APP_TOKEN_JWT_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    APP_INTERNAL_TOKEN_JWT_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+    APP_NEXT_GEN_MANAGER_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    HARNESS_SERVICES_PIPELINE_JWT_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        APP_TOKEN_JWT_SECRET: ""
+        APP_INTERNAL_TOKEN_JWT_SECRET: ""
+        APP_NEXT_GEN_MANAGER_JWT_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          APP_TOKEN_JWT_SECRET:
+            name: ""
+            property: ""
+          APP_INTERNAL_TOKEN_JWT_SECRET:
+            name: ""
+            property: ""
+          APP_NEXT_GEN_MANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+rbac:
+  rules: []
+pdb: {}

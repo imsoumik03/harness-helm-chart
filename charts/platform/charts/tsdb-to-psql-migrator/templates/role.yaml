@@ -1,0 +1,60 @@
+{{- if .Values.serviceAccount.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "tsdb-to-psql-migrator.name" . }}-role
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "tsdb-to-psql-migrator.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+      - list
+      - watch
+
+  - apiGroups:
+      - ""
+    resources:
+      - persistentvolumeclaims
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - statefulsets
+      - statefulsets/scale    
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - get
+      - list
+      - update
+      - patch
+  {{- if .Values.rbac.rules }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.rbac.rules "context" $ ) | nindent 2 }}
+  {{- end -}}
+{{- end }}

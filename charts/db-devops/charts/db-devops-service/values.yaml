@@ -1,0 +1,461 @@
+# Default values for db-devops-service.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  fips: false
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  ha: true
+  stackDriverLoggingEnabled: false
+  database:
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  imagePullSecrets: []
+  # -- Wait-For-App initContainers details
+  waitForInitContainer:
+    ## image version
+    ## ref: https://hub.docker.com/r/harness/helm-init-container/tags
+    # --image.registry ; image registry
+    # --image.repository ; image repository
+    # --image.tag ; image tag (immutable tags are recommended)
+    # --image.digest ; image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+    # --image.pullPolicy Image pull policy
+    # --image.imagePullSecrets Specify docker-registry secret names as an array
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+    resources:
+      limits:
+        memory: 128Mi
+      requests:
+        cpu: 128m
+        memory: 128Mi
+    containerSecurityContext:
+      runAsUser: 65534
+      runAsNonRoot: true
+    enabled: true
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+pdb: {}
+monitoring:
+  port: 8889
+  path: /metrics
+database:
+  mongo:
+    dbservice:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      database: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      masterName: "harness-redis"
+      password:
+        name: harness-secrets
+        key: redisPassword
+      sslCAPath: ""
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      sslEnabled: "false"
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+replicaCount: 1
+image:
+  repository: harness/db-devops-service-signed
+  pullPolicy: IfNotPresent
+  registry: docker.io
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.74.2"
+  imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+progressDeadlineSeconds: "600"
+service:
+  type: ClusterIP
+  port: 5001
+  targetPort: 5001
+probes:
+  startupProbe:
+    failureThreshold: 32
+    initialDelaySeconds: 25
+    periodSeconds: 5
+    httpGet:
+      path: /api/health
+      port: 5001
+      scheme: HTTP
+  livenessProbe:
+    failureThreshold: 5
+    periodSeconds: 60
+    timeoutSeconds: 10
+    httpGet:
+      path: /api/health
+      port: 5001
+      scheme: HTTP
+  readinessProbe:
+    failureThreshold: 3
+    periodSeconds: 5
+    httpGet:
+      path: /api/health
+      port: 5001
+      scheme: HTTP
+virtualService:
+  annotations: {}
+  objects:
+    - name: db-devops-service-apis
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/dbops/'
+    - name: db-devops-service-v1-apis
+      pathMatchType: regex
+      pathRewrite: "/\\1"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/instance/[^\/]+/logs/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/dbinstance/[^\/]+/changeset/sql)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/dbinstance/[^\/]+/changesetmetadata)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/dbinstance/[^\/]+/changeset/yaml)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/dbinstance/[^\/]+/migrationstate)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/instance/[^\/]+/deployedState)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/instance/[^\/]+/logs)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/instance/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/instance)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/instancelist)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/migrationstate)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/overview)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbinstancelist)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschemalist)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/execution-config/get-customer-config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/execution-config/get-default-config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/execution-config/reset-config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/execution-config/update-config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/custom-operations)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/execution-config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/failure-interrupt)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/plugin-output-response)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/schema-instance-metadata)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/step/plugin-inputs)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/step/plugin-response)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/dbschema)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/db-metadata)\/.*$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/dbops/metadata-snapshot)\/.*$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/pipeline/[^\/]+/status)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/default-llm-pipeline)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/dbinstance/[^\/]+/snapshot-object-names)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/dbschema/[^\/]+/dbinstance/[^\/]+/snapshot-object-values)\/?$'
+ingress:
+  objects:
+    - name: dbdevops-v1-apis
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$1
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/dbschema/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/dbschema)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/dbschemalist)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/dbinstancelist)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbinstance/.+/logs)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbops/execution-config)$'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbops/execution-config/.*)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbops/plugin-output-response)$'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbops/db-metadata/.*)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbops/metadata-snapshot/.*)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/pipeline/.+/status)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/default-llm-pipeline)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/dbops/dbschema)$'
+    - name: dbdevops-static
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$1
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/dbops/(.*)'
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+resources: {}
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  targetCPU: 80
+  targetMemory: ""
+terminationMessage:
+  terminationMessagePath: /dev/termination-log
+  terminationMessagePolicy: File
+terminationGracePeriodSeconds: 180
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+# Alternative naming for additional volumes (same as volumes)
+extraVolumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
+
+# Alternative naming for additional volumeMounts (same as volumeMounts)
+extraVolumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
+
+nodeSelector: {}
+imagePullSecrets: {}
+tolerations: []
+affinity: {}
+config:
+  APP_ENV: "production"
+  HTTP_PORT: "5001"
+  GRACEFUL_SHUTDOWN_SECONDS: "60"
+  INDEX_MANAGER_ENABLED: "true"
+  HARNESS_JWT_IDENTITY: "dbservice"
+  HARNESS_JWT_VALIDINMIN: "1440"
+  HARNESS_SERVICES_ACL_IGNORE: "false"
+  HARNESS_SERVICES_DISABLE_MTLS_VERIFICATION: "true"
+  HARNESS_SERVICES_ACL_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_ACL_CLIENT_BASEURL: "http://access-control:9006/api"
+  HARNESS_SERVICES_IDENTITY_JWT_IDENTITY: "IdentityService"
+  HARNESS_SERVICES_MANAGER_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_MANAGER_CLIENT_BASEURL: "http://harness-manager:3457/"
+  HARNESS_SERVICES_MANAGER_JWT_IDENTITY: "Manager"
+  HARNESS_SERVICES_NGMANAGER_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_NGMANAGER_CLIENT_BASEURL: "http://ng-manager:7090/"
+  HARNESS_SERVICES_NGMANAGER_JWT_IDENTITY: "NextGenManager"
+  HARNESS_SERVICES_PIPELINE_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_PIPELINE_CLIENT_BASEURL: "http://pipeline-service:12001"
+  HARNESS_SERVICES_PIPELINE_JWT_IDENTITY: "Pipeline"
+  HARNESS_SERVICES_PLATFORM_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_PLATFORM_CLIENT_BASEURL: "http://platform-service:9005/api"
+  HARNESS_SERVICES_PLATFORM_JWT_IDENTITY: "Platform"
+  PLUGIN_DBOPS_PREFIX_ENDPOINT: '{{ .Values.global.loadbalancerURL }}/dbops/'
+  REDIS_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  REDIS_MASTER_NAME: '{{ .Values.database.redis.events.masterName }}'
+  OUTBOX_ENABLED: "true"
+  AUDIT_ENABLED: "true"
+  OUTBOX_MAX_RETRY: "3"
+  OUTBOX_RETRY_WAIT_INTERVAL: "5s"
+  OUTBOX_RETRY_MAX_RECORDS: "50"
+  OUTBOX_RETRY_BACKOFF_INITIAL_INTERVAL: "1s"
+  OUTBOX_RETRY_BACKOFF_MULTIPLIER: "1.5"
+  OUTBOX_RETRY_MAX_BACKOFF: "1m"
+  OUTBOX_RETRY_UNBLOCK_RETRY_INTERVAL: "10m"
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  DB_SERVICE_PROFILER_SERVICE_NAME: "db-service"
+  DB_SERVICE_PROFILER_ENABLED: "false"
+  DB_SERVICE_PROFILER_ENVIRONMENT: "production"
+  ENABLE_OBJECT_STORE: "false"
+rbac:
+  rules: []
+secrets:
+  fileSecret: []
+  default:
+    SECRET: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          SECRET:
+            name: ""
+            property: ""

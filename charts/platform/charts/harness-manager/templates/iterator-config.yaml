@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: iterator-config
+  namespace: '{{ .Release.Namespace }}'
+  {{- if .Values.global.commonLabels }}
+  labels:
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.iterator.config "context" $) | nindent 2}}
+  {{- include "harnesscommon.secretsLoader.configContent" (dict "ctx" $ "databaseSecrets" (list 
+    (dict "dbtype" "mongo" "usernamesecrets" (list "NOTIFICATIONS_MONGO_USER" "HARNESS_MONGO_USER" "EVENTS_MONGO_USER" "DMS_HARNESS_MONGO_USER") "passwordsecrets" (list "NOTIFICATIONS_MONGO_PASSWORD" "HARNESS_MONGO_PASSWORD" "EVENTS_MONGO_PASSWORD" "DMS_HARNESS_MONGO_PASSWORD"))
+    (dict "dbtype" "postgres" "usernamesecrets" (list "TIMESCALEDB_USERNAME" "SECONDARY_TIMESCALEDB_USERNAME") "passwordsecrets" (list "TIMESCALEDB_PASSWORD" "SECONDARY_TIMESCALEDB_PASSWORD"))
+  )) | nindent 2}}

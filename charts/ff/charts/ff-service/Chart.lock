@@ -1,0 +1,21 @@
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.4.5
+- name: ff-server
+  repository: file://../ff-server
+  version: 0.1.0
+- name: ff-server
+  repository: file://../ff-server
+  version: 0.1.0
+- name: ff-server
+  repository: file://../ff-server
+  version: 0.1.0
+- name: ff-db-migrations
+  repository: file://../ff-db-migrations
+  version: 0.1.0
+- name: ff-db-migrations
+  repository: file://../ff-db-migrations
+  version: 0.1.0
+digest: sha256:545e90c2a20578c68dece07a79f0478e15c436b224ff797a16ee1c1ab59f5304
+generated: "2025-12-18T08:44:41.777930784Z"

@@ -1,0 +1,9 @@
+apiVersion: v2
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart for Kubernetes
+name: iac-server
+type: application
+version: 1.296.0

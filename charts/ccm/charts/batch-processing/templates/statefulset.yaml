@@ -1,0 +1,178 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: batch-processing
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "batch-processing.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  serviceName: "batch-processing"
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "batch-processing.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.global.commonAnnotations .Values.podAnnotations .Values.global.monitoring.enabled}}
+      annotations:
+      {{- if .Values.global.monitoring.enabled }}
+      {{- include "batch-processing.prometheusAnnotations" . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+    {{- end }}
+      labels:
+        app: batch-processing
+        {{- include "batch-processing.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "batch-processing.pullSecrets" . | nindent 6 }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName }}
+      {{- end }}
+      serviceAccountName: {{ include "batch-processing.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if .Values.global.database.mongo.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+        {{- end }}
+        {{- if .Values.global.database.timescaledb.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-timescale" "appName" "timescaledb-single-chart") | nindent 8}}
+        {{- end }}
+        {{- if .Values.global.database.postgres.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8}}
+        {{- end }}
+        {{- if .Values.postgres.initializeDb }}
+        - name: create-db-if-not-exists
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.postgres.image "global" .Values.global) }}
+          imagePullPolicy: IfNotPresent
+          env:
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 12 }}
+            - name: POSTGRES_HOST
+              value: {{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" .) }}
+          command:
+            - "bin/bash"
+            - "-c"
+            - echo "SELECT 'CREATE DATABASE batch_ccm' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'batch_ccm')\gexec"  | PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST}
+        {{- end }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      containers:
+        - name: batch-processing
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            {{- if .Values.global.monitoring.enabled }}
+            - name: metrics
+              containerPort: 8889
+              protocol: "TCP"
+            {{- end }}
+            - name: health-endpoint
+              containerPort: {{ .Values.health.server.port}}
+              protocol: "TCP"
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: {{ .Values.health.server.port}}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          envFrom:
+            - configMapRef:
+                name: batch-processing
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{ include "harnesscommon.secrets.manageSMTPEnv" (dict "ctx" $) | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "harness" "connectionURIVariableName" "MONGO_URI") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "events") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "events" "connectionURIVariableName" "EVENTS_MONGO_URI") | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" .) | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "SECONDARY_TIMESCALEDB_USERNAME" "passwordVariableName" "SECONDARY_TIMESCALEDB_PASSWORD" "localTimescaleDBCtx" .Values.secondaryTimescaledb "additionalCtxIdentifier" "secondary-timescaledb") | indent 12 }}
+            - name: TIMESCALEDB_URI
+              value: {{ include "harnesscommon.dbconnectionv2.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "harness" "context" $) }}
+            - name: SECONDARY_TIMESCALEDB_URI
+              value: {{ include "harnesscommon.dbconnectionv3.timescaleConnection" (dict "protocol" "jdbc:postgresql" "database" "harness" "context" $ "localTimescaleDBCtx" .Values.secondaryTimescaledb ) }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "BATCH_POSTGRESDB_USERNAME" "passwordVariableName" "BATCH_POSTGRESDB_PASSWORD") | indent 12 }}
+            - name: BATCH_POSTGRESDB_URI
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "protocol" "jdbc:postgresql" "database" "batch_ccm" "setPasswordEmpty" "true" "setUsernameEmpty" true) }}
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if .Values.global.ccm.governance.enabled }}
+            - name: FAKTORY_URL
+              value: "tcp://:$(FAKTORY_PASSWORD)@ccm-faktory.{{ .Release.Namespace }}.svc.cluster.local:7419"
+            {{- end }}
+            {{- if .Values.global.database.clickhouse.enabled }}
+            {{- $globalClickhouseESOSecretIdentifier := include "harnesscommon.secrets.globalESOSecretCtxIdentifier" (dict "ctx" $  "ctxIdentifier" "clickhouse") }}
+            {{- include "harnesscommon.secrets.manageEnv" (dict "ctx" $ "variableName" "CLICKHOUSE_USERNAME" "defaultValue" .Values.clickhouse.username "extKubernetesSecretCtxs" (list .Values.global.database.clickhouse.secrets.kubernetesSecrets) "esoSecretCtxs" (list (dict "secretCtxIdentifier" $globalClickhouseESOSecretIdentifier "secretCtx" .Values.global.database.clickhouse.secrets.secretManagement.externalSecretsOperator))) | indent 12 }}
+            {{- include "harnesscommon.secrets.manageEnv" (dict "ctx" $ "variableName" "CLICKHOUSE_PASSWORD" "defaultKubernetesSecretName" .Values.clickhouse.password.name "defaultKubernetesSecretKey" .Values.clickhouse.password.key "extKubernetesSecretCtxs" (list .Values.global.database.clickhouse.secrets.kubernetesSecrets) "esoSecretCtxs" (list (dict "secretCtxIdentifier" $globalClickhouseESOSecretIdentifier "secretCtx" .Values.global.database.clickhouse.secrets.secretManagement.externalSecretsOperator))) | indent 12 }}
+            {{- end }}
+            {{- if .Values.extraEnvVars }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
+          {{- end }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 10 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 6 }}
+      {{- end }}
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 6 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - batch-processing
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

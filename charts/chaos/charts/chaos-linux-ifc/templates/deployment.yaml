@@ -1,0 +1,137 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chaos-linux-ifc.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    component: {{ include "chaos-linux-ifc.name" . }}
+    app: {{ include "chaos-linux-ifc.name" . }}
+    {{- include "chaos-linux-ifc.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      component: {{ include "chaos-linux-ifc.name" . }}
+      app: {{ include "chaos-linux-ifc.name" . }}
+      {{- include "chaos-linux-ifc.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+        {{- if .Values.podAnnotations }}
+          {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        component: {{ include "chaos-linux-ifc.name" . }}
+        app: {{ include "chaos-linux-ifc.name" . }}
+        {{- include "chaos-linux-ifc.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "chaos-linux-ifc.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "chaos-linux-ifc.serviceAccountName" . }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 8 }}
+      containers:
+        - name: {{ include "chaos-linux-ifc.name" . }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+          command: {{- include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 12 }}
+          args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "infrastructure-controller -leader-elect=true" "secrets_loader_cmd" "true") | nindent 12 }}
+          {{- else }}          
+          command:
+          - infrastructure-controller
+          args:
+          - -leader-elect=true
+          {{- end }}
+          env:
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10}}
+          # DB Secrets
+          {{- $redisEnv := include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cache" "userVariableName" "REDIS_CACHE_USERNAME" "passwordVariableName" "REDIS_CACHE_PASSWORD" ) }}
+          {{- if not $redisEnv }}
+          - name: REDIS_CACHE_USERNAME
+            value: ""
+          - name: REDIS_CACHE_PASSWORD
+            value: ""
+          {{- else }}
+          {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cache" "userVariableName" "REDIS_CACHE_USERNAME" "passwordVariableName" "REDIS_CACHE_PASSWORD" ) | indent 10 }}
+          {{- end }}
+          {{- end }}
+          - name: WATCH_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          envFrom:
+            - configMapRef:
+                name: {{ include "chaos-linux-ifc.name" . }}-config      
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.probes }}
+          {{- toYaml .Values.probes | nindent 10 }}
+          {{- end }}
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 12 }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "chaos-linux-ifc.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 8 }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}

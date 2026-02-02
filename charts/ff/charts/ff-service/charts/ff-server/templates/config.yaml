@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ff-server.name" . }}
+  labels:
+    {{- include "ff-server.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- if .Values.global.cfPostgresEnabled }}
+  DB_HOST: {{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" $) }}
+  DB_PORT: {{ include "harnesscommon.dbconnectionv2.postgresPort" (dict "context" $) | default 5432 | quote }}
+  SSL_MODE: {{ include "postgresSSLMode" (dict "context" $) }}
+  {{- else }}
+  DB_HOST: {{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}
+  DB_PORT: {{ include "harnesscommon.dbconnectionv2.timescalePort" (dict "context" $) | default 5432 | quote }}
+  SSL_MODE: {{ include "timescaleSSLMode" (dict "context" $) }}
+  {{- end }}
+  {{- if .Values.global.opa.enabled }}
+  POLICY_MGMT_ENABLED: 'true'
+  POLICY_MGMT_SERVICE_URL: 'http://policy-mgmt.{{ .Release.Namespace }}.svc.cluster.local:3000/'
+  PLATFORM_SERVICE_URL: http://platform-service.{{.Release.Namespace}}.svc.cluster.local:9005
+  {{- end }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}

@@ -1,0 +1,281 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "access-control.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "access-control.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "access-control.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/credentials-secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }}
+        {{- if .Values.spicedb.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.spicedb.metrics.port }}"
+        prometheus.io/path: "{{ .Values.spicedb.metrics.path }}"
+        {{- end }}
+      labels:
+        app: access-control
+        {{- include "access-control.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "access-control.pullSecrets" . | nindent 6 }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName }}
+      {{- end }}
+      serviceAccountName: {{ include "access-control.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- end }}
+      initContainers:
+        {{- include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 8 }}
+        {{- if and .Values.spicedb.enabled .Values.global.database.postgres.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8 }}
+        {{- end }}
+        {{- include "harnesscommon.jfr.v1.initContainer" (dict "ctx" $) | nindent 8 }}
+        {{- if .Values.global.database.mongo.installed }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+        {{- end }}
+        {{- if .Values.global.database.redis.installed }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-redis" "appName" "redis-sentinel") | nindent 8}}
+        {{- end }}
+        {{- if .Values.spicedb.enabled }}
+        {{- if .Values.spicedb.createDatabase }}
+        - name: create-spicedb-db
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.postgres.image "global" .Values.global) }}
+          imagePullPolicy: IfNotPresent
+          env:
+            {{- include "harnesscommon.dbconnectionv3.postgresEnv" (dict "ctx" $ "userVariableName" "SPICEDB_POSTGRES_USER" "passwordVariableName" "SPICEDB_POSTGRES_PASSWORD" "localDBCtx" .Values.database.postgres "globalDBCtx" .Values.global.database.postgres) | indent 12 }}
+            - name: POSTGRES_HOST
+              value: {{ include "harnesscommon.dbconnectionv3.postgresHost" (dict "localDBCtx" .Values.database.postgres "globalDBCtx" .Values.global.database.postgres) }}
+            - name: SPICEDB_DATABASE
+              value: {{ .Values.database.postgres.database | default "spicedb" }}
+          command:
+            - "/bin/sh"
+            - "-c"
+            - echo "SELECT 'CREATE DATABASE \"${SPICEDB_DATABASE}\"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '${SPICEDB_DATABASE}')\\gexec" | PGPASSWORD=${SPICEDB_POSTGRES_PASSWORD} psql -U ${SPICEDB_POSTGRES_USER} -h ${POSTGRES_HOST} -d postgres
+        {{- end }}
+        - name: spicedb-migrate
+          image: "{{ .Values.spicedb.image.repository }}:{{ .Values.spicedb.image.tag }}"
+          imagePullPolicy: "{{ .Values.spicedb.image.pullPolicy }}"
+          command: ["spicedb", "migrate", "head"]
+          env:
+            {{- include "harnesscommon.dbconnectionv3.postgresEnv" (dict "ctx" $ "userVariableName" "SPICEDB_POSTGRES_USER" "passwordVariableName" "SPICEDB_POSTGRES_PASSWORD" "localDBCtx" .Values.database.postgres "globalDBCtx" .Values.global.database.postgres) | indent 12 }}
+            - name: SPICEDB_DATASTORE_CONN_URI
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "spicedb" "protocol" "postgres" "keywordValueConnectionString" false "globalDBCtx" .Values.global.database.postgres "localDBCtx" .Values.database.postgres "userVariableName" "SPICEDB_POSTGRES_USER" "passwordVariableName" "SPICEDB_POSTGRES_PASSWORD") }}
+          envFrom:
+            - configMapRef:
+                name: access-control-spicedb
+        {{- end }}
+        {{- if .Values.initContainers }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+        {{- end }}
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{ include "harnesscommon.initContainer.setupWritable" (dict "root" . "destinationPath" "/shared/volume" "sourcePath" "/opt/harness" "volumeName" "harness-opt") | nindent 8}}
+        {{- end }}
+      containers:
+        - name: access-control
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+          args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $) | nindent 12 }}
+          {{- end }}          
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.service.port }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /api/health/liveness
+              port: {{ .Values.service.port }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{ if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: {{ .Values.service.port }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.terminationMessage }}
+            {{- toYaml .Values.terminationMessage | nindent 10 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources:
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.resources "context" $) | nindent 12 }}
+          {{- end }}
+          lifecycle: {{- include "harnesscommon.v1.renderLifecycleHooks" (dict "ctx" $) | nindent 12 }} 
+          ports:
+          - name: http
+            containerPort: {{.Values.service.port}}
+            protocol: "TCP"
+          {{- include "harnesscommon.monitoring.containerPort" . | nindent 10 }}
+          env:
+            {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "lock" "userVariableName" "LOCK_CONFIG_REDIS_USERNAME" "passwordVariableName" "LOCK_CONFIG_REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "EVENTS_CONFIG_REDIS_USERNAME" "passwordVariableName" "EVENTS_CONFIG_REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "accesscontrol" "userVariableName" "MONGODB_USER" "passwordVariableName" "MONGODB_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "resource-groups") | indent 12 }}
+            {{- end }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "lock" "variableNames" ( dict "sslEnabled" "LOCK_CONFIG_REDIS_SSL_ENABLED" "sslCATrustStorePath" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "LOCK_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD" )) | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCATrustStorePath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_CONFIG_REDIS_SSL_ENABLED" "sslCATrustStorePath" "EVENTS_CONFIG_REDIS_SSL_CA_TRUST_STORE_PATH" "sslCATrustStorePassword" "EVENTS_CONFIG_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 12 }}
+            {{- include "harnesscommon.jfr.v1.renderEnvironmentVars" (dict "ctx" $)  | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "accesscontrol" "connectionURIVariableName" "MONGO_URI" "userVariableName" "MONGODB_USER" "passwordVariableName" "MONGODB_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "resource-groups" "connectionURIVariableName" "RESOURCE_GROUP_MONGO_URI") | indent 12 }}
+            - name: BILLING_METRICS_TOPIC_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: billing-metrics-shared-config
+                  key: BILLING_METRICS_TOPIC_NAME
+                  optional: true
+            {{- if .Values.extraEnvVars }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          envFrom:
+          - configMapRef:
+              name: access-control
+              {{- if .Values.extraEnvVarsCM }}
+              name: {{ include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVarsCM "context" $) }}
+              {{- end }}
+          {{- if and .Values.extraEnvVarsSecret (eq (include "harnesscommon.secretLoader.enabled" (dict "ctx" $)) "true") }}
+          - secretRef:
+              name: {{ include "harnesscommon.tplvalues.render" (dict "value" .Values.extraEnvVarsSecret "context" $) }}
+            {{- end }}
+          volumeMounts:
+          {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 10 }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 10}}
+          {{- end }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 10 }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "lock") | nindent 10 }}
+          {{- include "harnesscommon.jfr.v1.volumeMounts" (dict "ctx" $) | indent 10 }}
+          {{- if .Values.extraVolumeMounts }}
+            {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
+          {{- end }}
+          {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+            {{ include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "harness-opt" "mountPath" "/opt/harness") (dict "name" "tmp" "mountPath" "/tmp")) ) | nindent 10 }}
+          {{- end }}  
+        {{- if .Values.spicedb.enabled }}
+        - name: spicedb
+          image: "{{ .Values.spicedb.image.repository }}:{{ .Values.spicedb.image.tag }}"
+          args:
+            - serve
+            - --dispatch-cache-enabled=true
+            - --dispatch-cluster-cache-enabled=true
+            - --ns-cache-enabled=true
+            - --datastore-conn-pool-read-max-open=500
+            - --datastore-revision-quantization-interval=5s
+            - --grpc-max-conn-age=5m
+          env:
+            {{- include "harnesscommon.dbconnectionv3.postgresEnv" (dict "ctx" $ "userVariableName" "SPICEDB_POSTGRES_USER" "passwordVariableName" "SPICEDB_POSTGRES_PASSWORD" "localDBCtx" .Values.database.postgres "globalDBCtx" .Values.global.database.postgres) | indent 12 }}
+            - name: SPICEDB_DATASTORE_CONN_URI
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "spicedb" "protocol" "postgres" "keywordValueConnectionString" false "globalDBCtx" .Values.global.database.postgres "localDBCtx" .Values.database.postgres "userVariableName" "SPICEDB_POSTGRES_USER" "passwordVariableName" "SPICEDB_POSTGRES_PASSWORD") }}
+          envFrom:
+            - configMapRef:
+                name: access-control-spicedb
+          ports:
+            - containerPort: 50051
+              name: spicedb-grpc
+            - containerPort: 8443
+              name: spicedb-http
+            - containerPort: {{ .Values.spicedb.metrics.port }}
+              name: metrics
+          resources:
+            limits:
+              cpu: 4
+              memory: 4Gi
+            requests:
+              cpu: 2
+              memory: 2Gi
+        {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 6 }}
+        {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false"}}
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 6 }}
+        {{- end }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 6 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "lock") | indent 6 }}  
+        {{- if .Values.extraVolumes }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 6 }}
+        {{- end }}
+        {{- include "harnesscommon.jfr.v1.volumes" (dict "ctx" $) | indent 6 }}
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{- include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "harness-opt" "type" "emptyDir") (dict "name" "tmp" "type" "emptyDir")) ) | nindent 6 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "access-control.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,48 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-configuration" (include "postgresql.v1.primary.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: primary
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  postgresql.conf: |-
+    data_directory = '/bitnami/postgresql/data'
+    hba_file = '/bitnami/postgresql/conf/pg_hba.conf'
+    listen_addresses = '*'
+    max_connections = 200
+    shared_buffers = 128MB
+    dynamic_shared_memory_type = posix
+    max_wal_size = 1GB
+    min_wal_size = 80MB
+    log_timezone = 'UTC'
+    datestyle = 'iso, mdy'
+    timezone = 'UTC'
+    lc_messages = 'en_US.utf8'
+    lc_monetary = 'en_US.utf8'
+    lc_numeric = 'en_US.utf8'
+    lc_time = 'en_US.utf8'
+    default_text_search_config = 'pg_catalog.english'
+    cron.database_name = 'postgres'
+    cron.use_background_workers = on
+    shared_preload_libraries = '{{ include "postgresql.v1.sharedPreloadLibraries" . }}'
+    {{- if .Values.primary.configuration }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.primary.configuration "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.primary.extendedConfiguration }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.primary.extendedConfiguration "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.audit }}
+    {{- include "postgresql.v1.audit.configuration" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.tls.enabled }}
+    {{- include "postgresql.v1.tls.configuration" . | nindent 4 }}
+    {{- end }}

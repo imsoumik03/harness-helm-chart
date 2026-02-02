@@ -1,0 +1,10 @@
+apiVersion: v2
+appVersion: v1.76.1
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart for Kubernetes
+name: sto-core
+type: application
+version: 1.173.2

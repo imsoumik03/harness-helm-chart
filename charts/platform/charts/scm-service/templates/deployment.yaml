@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scm
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "scm-service.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "scm-service.selectorLabels" . | nindent 6 }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        app: scm-service
+        {{- include "scm-service.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "scm-service.pullSecrets" . | nindent 6}}
+      serviceAccountName: {{ include "scm-service.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{ include "harnesscommon.initContainer.setupWritable" (dict "root" . "destinationPath" "/shared/volume" "sourcePath" "/usr/local/bin" "volumeName" "usr-local-bin") | nindent 8 }}
+        {{- end }}
+      containers:
+        - name: scm
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          env:
+            - name: FIPS_ENABLED
+              value: '{{ .Values.global.fips }}'
+          ports:
+          - name: scm
+            containerPort: {{ .Values.service.port }}
+            protocol: TCP
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["/grpc_health_probe", "-addr=:8091"]
+            initialDelaySeconds: 5
+          livenessProbe:
+            exec:
+              command: ["/grpc_health_probe", "-addr=:8091"]
+            initialDelaySeconds: 10
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts }}
+          volumeMounts:
+          {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{- include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "usr-local-bin" "mountPath" "/usr/local/bin") (dict "name" "tmp" "mountPath" "/tmp")) ) | nindent 12 }}
+          {{- end }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - scm-service
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+       {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+      {{- include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "usr-local-bin" "type" "emptyDir") (dict "name" "tmp" "type" "emptyDir")) ) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}

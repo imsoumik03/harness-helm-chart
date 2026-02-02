@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chaos-machine-ifs.name" . }}-config
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "chaos-machine-ifs.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}
+  {{- include "harnesscommon.secretsLoader.configContent" (dict "ctx" $ "databaseSecrets" (list 
+    (dict "dbtype" "mongo" "usernamesecrets" (list "DB_USER") "passwordsecrets" (list "DB_PASSWORD"))
+    (dict "dbtype" "redis" "usernamesecrets" (list "REDIS_CACHE_USERNAME") "passwordsecrets" (list "REDIS_CACHE_PASSWORD"))
+  )) | nindent 2}}

@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chaos-machine-ifs.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    component: {{ include "chaos-machine-ifs.name" . }}
+    app: {{ include "chaos-machine-ifs.name" . }}
+    {{- include "chaos-machine-ifs.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      component: {{ include "chaos-machine-ifs.name" . }}
+      app: {{ include "chaos-machine-ifs.name" . }}
+      {{- include "chaos-machine-ifs.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+        {{- if .Values.podAnnotations }}
+          {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        component: {{ include "chaos-machine-ifs.name" . }}
+        app: {{ include "chaos-machine-ifs.name" . }}
+        {{- include "chaos-machine-ifs.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "chaos-machine-ifs.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "chaos-machine-ifs.serviceAccountName" . }}
+      initContainers:
+        {{- include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 8 }}
+        {{- if .Values.global.database.mongo.installed }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+        {{- end }}
+      containers:
+        - name: {{ include "chaos-machine-ifs.name" . }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+          command: {{- include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 12 }}
+          args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "infrastructure-server" "secrets_loader_cmd" "true") | nindent 12 }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "chaos-machine-ifs.name" . }}-config
+          env:
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+          # App Secrets
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+          # DB Secrets
+          {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD") | indent 12 }}
+          {{- $redisEnv := include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cache" "userVariableName" "REDIS_CACHE_USERNAME" "passwordVariableName" "REDIS_CACHE_PASSWORD") }}
+          {{- if not $redisEnv }}
+            - name: REDIS_CACHE_USERNAME
+              value: ""
+            - name: REDIS_CACHE_PASSWORD
+              value: ""
+          {{- else }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cache" "userVariableName" "REDIS_CACHE_USERNAME" "passwordVariableName" "REDIS_CACHE_PASSWORD" ) | indent 12 }}
+          {{- end }}
+          {{- end }}
+          {{- $redisCacheSSL := include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cache" "variableNames" ( dict "sslEnabled" "REDIS_CACHE_SSL_ENABLED" "sslCACertPath" "REDIS_CACHE_CERT_PATH" )) }}
+          {{- if $redisCacheSSL }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cache" "variableNames" ( dict "sslEnabled" "REDIS_CACHE_SSL_ENABLED" "sslCACertPath" "REDIS_CACHE_CERT_PATH" )) | indent 12 }}
+          {{- else }}
+            - name: REDIS_CACHE_SSL_ENABLED
+              value: "false"
+            - name: REDIS_CACHE_CERT_PATH
+              value: ""
+          {{- end }}
+          {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database"  "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD" "connectionURIVariableName" "DB_SERVER") | indent 12 }}
+          {{- if .Values.probes }}
+          {{- toYaml .Values.probes | nindent 10 }}
+          {{- end }}
+          ports:
+            - containerPort: {{.Values.service.port}}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 12 }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cache") | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 8 }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cache") | indent 8 }}

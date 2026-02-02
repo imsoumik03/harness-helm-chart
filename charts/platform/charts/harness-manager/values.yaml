@@ -1,0 +1,1310 @@
+# Default values for harness-manager
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  # -- High availability: deploy 3 mongodb pods instead of 1. Not recommended for evaluation or POV
+  ha: false
+  fips: false
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  stackDriverLoggingEnabled: false
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+      timescaledb:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - dummy.net
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      # -- TimescaleDB secrets
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  mongoSSL: false
+  license:
+    cg: ''
+    ng: ''
+    secrets:
+      kubernetesSecrets:
+        - secretName: ""
+          keys:
+            CG_LICENSE: ""
+            NG_LICENSE: ""
+      secretManagement:
+        externalSecretsOperator:
+          - secretStore:
+              name: ""
+              kind: ""
+            remoteKeys:
+              CG_LICENSE:
+                name: ""
+                property: ""
+              NG_LICENSE:
+                name: ""
+                property: ""
+  cd:
+    enabled: false
+  ci:
+    enabled: false
+  sto:
+    enabled: false
+  srm:
+    enabled: false
+  ssca:
+    enabled: false
+  ngcustomdashboard:
+    enabled: false
+  ff:
+    enabled: false
+  ccm:
+    enabled: false
+  saml:
+    autoaccept: false
+  gitops:
+    enabled: false
+  opa:
+    enabled: false
+  ng:
+    enabled: true
+  cg:
+    enabled: false
+  chaos:
+    enabled: false
+  servicediscoverymanager:
+    enabled: false
+  dbops:
+    enabled: false
+  idp:
+    enabled: false
+  useMinimalDelegateImage: false
+  smtpCreateSecret:
+    enabled: false
+    SMTP_PASSWORD: ""
+    SMTP_HOST: ""
+    SMTP_USERNAME: ""
+    SMTP_USE_SSL: "true"
+    SMTP_PORT: "465"
+    secrets:
+      kubernetesSecrets:
+        - secretName: ""
+          keys:
+            SMTP_USERNAME: ""
+            SMTP_PASSWORD: ""
+            SMTP_HOST: ""
+            SMTP_PORT: ""
+            SMTP_USE_SSL: ""
+      secretManagement:
+        externalSecretsOperator:
+          - secretStore:
+              name: ""
+              kind: ""
+            remoteKeys:
+              SMTP_USERNAME:
+                name: ""
+                property: ""
+              SMTP_PASSWORD:
+                name: ""
+                property: ""
+              SMTP_HOST:
+                name: ""
+                property: ""
+              SMTP_PORT:
+                name: ""
+                property: ""
+              SMTP_USE_SSL:
+                name: ""
+                property: ""
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  proxy:
+    enabled: false
+    host: localhost
+    port: 80
+    username: ""
+    password: ""
+    protocol: http
+  awsServiceEndpointUrls:
+    enabled: false
+    endPointRegion: us-east-2
+    stsEndPointUrl: https://sts.us-east-2.amazonaws.com
+    ecsEndPointUrl: https://ecs.us-east-2.amazonaws.com
+    cloudwatchEndPointUrl: https://monitoring.us-east-2.amazonaws.com
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+  jfr:
+    enabled: false
+monitoring:
+  port: 8889
+  path: /metrics
+externalSecretsLoader:
+  configName: "harness-manager-config"
+timescaledb:
+  enabled: false
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+
+  #  sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+secondaryTimescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  protocol: "jdbc:postgresql2312321"
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+database:
+  mongo:
+    dmsharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    notifications:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    harness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    lock:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+replicaCount: 1
+progressDeadlineSeconds: 600
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+podLabels: {}
+allowedOrigins: ""
+image:
+  registry: docker.io
+  repository: harness/manager-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.125.2"
+  digest: ""
+  imagePullSecrets: []
+initContainer:
+  image:
+    registry: docker.io
+    repository: busybox
+    pullPolicy: IfNotPresent
+    tag: "1.37.0"
+    digest: ""
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+timescaleSecret:
+  password:
+    name: harness-secrets
+    key: timescaledbPostgresPassword
+version: 1.0.80209
+immutable_delegate_docker_image:
+  image:
+    registry: docker.io
+    repository: harness/delegate
+    tag: 25.11.87301
+    digest: ""
+upgrader_docker_image:
+  image:
+    registry: docker.io
+    repository: harness/upgrader
+    tag: latest
+    digest: ""
+appLogLevel: INFO
+redisConfig:
+  nettyThreads: "32"
+java:
+  memory: "2048"
+external_graphql_rate_limit: "500"
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+podAnnotations: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 9090
+  grpcport: 9879
+headlessService:
+  annotations: {}
+resources:
+  limits:
+    memory: 8192Mi
+  requests:
+    cpu: 2
+    memory: 3072Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 120
+nodeSelector: {}
+tolerations: {}
+affinity: {}
+### These flags are used by the helper function to create the FEATURES config value based off the global.<feature>.enabled boolean
+# -- Feature Flags
+featureFlags:
+  # -- Base flags for all modules(enabled by Default)
+  Base: "ASYNC_ARTIFACT_COLLECTION,JIRA_INTEGRATION,AUDIT_TRAIL_UI,GDS_TIME_SERIES_SAVE_PER_MINUTE,STACKDRIVER_SERVICEGUARD,TIME_SERIES_SERVICEGUARD_V2,TIME_SERIES_WORKFLOW_V2,CUSTOM_DASHBOARD,GRAPHQL,CV_FEEDBACKS,LOGS_V2_247,UPGRADE_JRE,LOG_STREAMING_INTEGRATION,NG_HARNESS_APPROVAL,GIT_SYNC_NG,NG_CG_TASK_ASSIGNMENT_ISOLATION,AZURE_CLOUD_PROVIDER_VALIDATION_ON_DELEGATE,TERRAFORM_AWS_CP_AUTHENTICATION,NG_TEMPLATES,NEW_DEPLOYMENT_FREEZE,HELM_CHART_AS_ARTIFACT,RESOLVE_DEPLOYMENT_TAGS_BEFORE_EXECUTION,WEBHOOK_TRIGGER_AUTHORIZATION,GITHUB_WEBHOOK_AUTHENTICATION,CUSTOM_MANIFEST,GIT_ACCOUNT_SUPPORT,AZURE_WEBAPP,POLLING_INTERVAL_CONFIGURABLE,APPLICATION_DROPDOWN_MULTISELECT,RESOURCE_CONSTRAINT_SCOPE_PIPELINE_ENABLED,NG_TEMPLATE_GITX,ELK_HEALTH_SOURCE,CVNG_METRIC_THRESHOLD,SRM_HOST_SAMPLING_ENABLE,SRM_ENABLE_HEALTHSOURCE_CLOUDWATCH_METRICS,CDS_SHELL_VARIABLES_EXPORT,CDS_TAS_NG,CD_TRIGGER_V2,CDS_NG_TRIGGER_MULTI_ARTIFACTS,ACCOUNT_BASIC_ROLE,CD_NG_DOCKER_ARTIFACT_DIGEST,CDS_SERVICE_OVERRIDES_2_0,NG_SVC_ENV_REDESIGN,NG_EXECUTION_INPUT,CDS_SERVICENOW_REFRESH_TOKEN_AUTH,SERVICE_DASHBOARD_V2,CDS_OrgAccountLevelServiceEnvEnvGroup,CDC_SERVICE_DASHBOARD_REVAMP_NG,PL_FORCE_DELETE_CONNECTOR_SECRET,POST_PROD_ROLLBACK,PIE_STATIC_YAML_SCHEMA,SPG_SIDENAV_COLLAPSE,HOSTED_BUILDS,CIE_HOSTED_VMS,ENABLE_K8_BUILDS,CI_OUTPUT_VARIABLES_AS_ENV,CDS_GITHUB_APP_AUTHENTICATION,CDS_REMOVE_TIME_BUCKET_GAPFILL_QUERY,CDS_CONTAINER_STEP_GROUP,CDS_SUPPORT_EXPRESSION_REMOTE_TERRAFORM_VAR_FILES_NG,CDS_AWS_CDK,DISABLE_WINRM_COMMAND_ENCODING_NG,SKIP_ADDING_TRACK_LABEL_SELECTOR_IN_ROLLING,ENABLE_CERT_VALIDATION,CDS_GET_SERVICENOW_STANDARD_TEMPLATE,CDS_ENABLE_NEW_PARAMETER_FIELD_PROCESSOR,SRM_MICRO_FRONTEND,CVNG_TEMPLATE_MONITORED_SERVICE,PL_DISCOVERY_ENABLE,PIE_GIT_BI_DIRECTIONAL_SYNC,CDS_METHOD_INVOCATION_NEW_FLOW_EXPRESSION_ENGINE,CD_NG_DYNAMIC_PROVISIONING_ENV_V2,CDS_HELM_MULTIPLE_MANIFEST_SUPPORT_NG,CDS_SERVERLESS_V2,CDP_AWS_SAM,CDS_IMPROVED_HELM_DEPLOYMENT_TRACKING,CDS_K8S_APPLY_MANIFEST_WITHOUT_SERVICE_NG,CDS_HELM_FETCH_CHART_METADATA_NG,CDS_K8S_HELM_INSTANCE_SYNC_V2_NG,USE_K8S_API_FOR_STEADY_STATE_CHECK,CVNG_TEMPLATE_VERIFY_STEP,CDS_HIDE_AIDA_RCA"
+  # -- NG Specific Feature Flags(activated when global.ng is enabled)
+  NG: "ENABLE_DEFAULT_NG_EXPERIENCE_FOR_ONPREM,NEXT_GEN_ENABLED,NEW_LEFT_NAVBAR_SETTINGS,SPG_SIDENAV_COLLAPSE,PL_ENABLE_JIT_USER_PROVISION,CDS_NAV_2_0,PL_HIDE_ACCOUNT_EDITION_UI"
+  # -- CD Feature Flags (activated when global.cd is enabled)
+  CD: "CDS_AUTO_APPROVAL,CDS_NG_TRIGGER_SELECTIVE_STAGE_EXECUTION"
+  # -- CI Feature Flags (activated when global.ci is enabled)
+  CI: "CI_INDIRECT_LOG_UPLOAD"
+  # -- STO Feature Flags (activated when global.sto is enabled)
+  STO: "STO_BASELINE_REGEX,STO_STEP_PALETTE_BURP_ENTERPRISE,STO_STEP_PALETTE_CODEQL,STO_STEP_PALETTE_FOSSA,STO_STEP_PALETTE_GIT_LEAKS,STO_STEP_PALETTE_SEMGREP"
+  # -- SRM Flags (activated when global.srm is enabled)
+  SRM: "CVNG_ENABLED"
+  # -- Custom Dashboard Flags (activated when global.dashboards is enabled)
+  CDB: "NG_DASHBOARDS"
+  # -- AutoAccept Feature Flags
+  SAMLAutoAccept: "AUTO_ACCEPT_SAML_ACCOUNT_INVITES,PL_NO_EMAIL_FOR_SAML_ACCOUNT_INVITES"
+  # -- FF Feature Flags (activated when global.ff is enabled)
+  FF: "CFNG_ENABLED, FFM_ENABLE_FF_MODULE"
+  # -- CCM Feature Flags (activated when global.ccm is enabled)
+  CCM: ""
+  # -- GitOps Feature Flags (activated when global.gitops is enabled)
+  GitOps: "GITOPS_ONPREM_ENABLED,CUSTOM_ARTIFACT_NG,SERVICE_DASHBOARD_V2,OPTIMIZED_GIT_FETCH_FILES,MULTI_SERVICE_INFRA,ENV_GROUP,NG_SVC_ENV_REDESIGN,GITOPS_ORG_LEVEL"
+  # -- Licensing flags
+  LICENSE: "NG_LICENSES_ENABLED,VIEW_USAGE_ENABLED"
+  # -- OPA (activated when global.opa is enabled)
+  OPA: "OPA_PIPELINE_GOVERNANCE,OPA_GIT_GOVERNANCE"
+  # -- CHAOS Feature Flags (activated when global.chaos is enabled)
+  CHAOS: "CHAOS_ENABLED"
+  # --- ServiceDiscoveryManager Feature Flags
+  SDM: "PL_DISCOVERY_ENABLE"
+  # -- SSCA Feature Flags (activated when global.ssca is enabled)
+  SSCA: "SSCA_ENABLED,DEBEZIUM_ENABLED"
+  # -- IDP Feature Flags
+  IDP: "IDP_ENABLED,IDP_UI_API_BASED_RESTART,IDP_2_0"
+  # -- DBOPS Feature Flag (activated when global.dbops is enabled)
+  DBOPS: "DBOPS_ENABLED,CDS_NAV_2_0"
+  # -- Additional Feature Flag
+  ADDITIONAL: ""
+additionalConfigs: {}
+java17flags: ""
+# extraVolumes:
+# - name: volume-test
+#   configMap:
+#     name: test-config
+#     readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: test-volume-mount
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+shutdownHooksEnabled: false
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+# extraEnvVars:
+# - name: POD_NAME
+#   valueFrom:
+#     fieldRef:
+#       fieldPath: metadata.name
+extraEnvVars: []
+virtualService:
+  annotations: {}
+  objects:
+    - name: harness-manager-api
+      pathMatchType: prefix
+      pathRewrite: "/api/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/api/swagger/'
+          backend:
+            service:
+              port: 9999
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/api/'
+    - name: harness-manager-stream
+      pathMatchType: prefix
+      pathRewrite: "/stream/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/stream/'
+ingress:
+  annotations: {}
+  objects:
+    - name: harness-manager-api
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /api$1$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/api(/|$)(.*)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/api/swagger(/|$)(.*)'
+          backend:
+            service:
+              port: 9999
+    - name: harness-manager-stream
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /stream$1$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/stream(/|$)(.*)'
+secrets:
+  default:
+    LOG_STREAMING_SERVICE_TOKEN: "c76e567a-b341-404d-a8dd-d9738714eb82"
+    VERIFICATION_SERVICE_SECRET: "59MR5RlVARcdH7zb7pNx6GzqiglBmXR8"
+    CF_CLIENT_API_KEY: "DUMMY"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        LOG_STREAMING_SERVICE_TOKEN: ""
+        VERIFICATION_SERVICE_SECRET: ""
+        CF_CLIENT_API_KEY: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          LOG_STREAMING_SERVICE_TOKEN:
+            name: ""
+            property: ""
+          VERIFICATION_SERVICE_SECRET:
+            name: ""
+            property: ""
+          CF_CLIENT_API_KEY:
+            name: ""
+            property: ""
+config:
+  REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  REDIS_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  REDIS_NETTY_THREADS: '{{ .Values.redisConfig.nettyThreads }}'
+  REDIS_MASTER_NAME: harness-redis
+  REDIS_CONNECTION_MINIMUM_IDLE_SIZE: "32"
+  REDIS_SUBSCRIPTION_CONNECTION_POOL_SIZE: "100"
+  REDIS_SUBSCRIPTIONS_PER_CONNECTION: "10"
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: harness-redis
+  EVENTS_FRAMEWORK_AVAILABLE_IN_ONPREM: "true"
+  VERSION: '{{ .Values.version }}'
+  STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
+  ALLOWED_ORIGINS: '{{ .Values.allowedOrigins | default .Values.global.loadbalancerURL }}'
+  API_URL: '{{  .Values.global.loadbalancerURL }}'
+  UI_SERVER_URL: '{{  .Values.global.loadbalancerURL }}'
+  LOG_STREAMING_SERVICE_EXTERNAL_URL: '{{ .Values.global.loadbalancerURL }}/log-service/'
+  IMMUTABLE_DELEGATE_ENABLED: "true"
+  IMMUTABLE_DELEGATE_DOCKER_IMAGE: '{{ include "harness-manager.immutable_delegate_docker_image" . }}'
+  UPGRADER_DOCKER_IMAGE: '{{ include "harness-manager.upgrader_docker_image" . }}'
+  EXTERNAL_GRAPHQL_RATE_LIMIT: '{{ .Values.external_graphql_rate_limit }}'
+  FEATURES: '{{ include "harness-manager.ffString" . }}'
+  HAZELCAST_NAMESPACE: '{{ .Release.Namespace }}'
+  LOGGING_LEVEL: '{{ .Values.appLogLevel }}'
+  MEMORY: '{{ .Values.java.memory }}'
+  WATCHER_METADATA_URL: '{{  .Values.global.loadbalancerURL }}/storage/wingswatchers/watcherprod.txt'
+  NG_MANAGER_AVAILABLE: "true"
+  LOG_STREAMING_SERVICE_BASEURL: 'http://log-service.{{ .Release.Namespace }}.svc.cluster.local:8079/'
+  DELEGATE_METADATA_URL: '{{  .Values.global.loadbalancerURL }}/storage/wingsdelegates/delegateprod.txt'
+  FEATURE_FLAG_SYSTEM: LOCAL
+  USE_WORKLOAD_IDENTITY: "true"
+  GITOPS_SERVICE_CLIENT_BASEURL: http://gitops:7908/api/v1/
+  ATMOSPHERE_BACKEND: REDIS
+  BACKGROUND_SCHEDULER_CLUSTERED: "true"
+  CACHE_BACKEND: REDIS
+  CAPSULE_JAR: rest-capsule.jar
+  DELEGATE_SERVICE_TARGET: harness-manager:9879
+  DELEGATE_SERVICE_AUTHORITY: harness-manager:9879
+  INTERNAL_DELEGATE_SERVICE_TARGET: harness-manager:9879
+  INTERNAL_DELEGATE_SERVICE_AUTHORITY: harness-manager:9879
+  DISTRIBUTED_LOCK_IMPLEMENTATION: REDIS
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  DISABLE_NEW_RELIC: "true"
+  ENABLE_G1GC: "true"
+  HAZELCAST_SERVICE: harness-manager
+  HZ_CLUSTER_NAME: harness-manager
+  SERVER_PORT: "9090"
+  SERVICE_ACC: /opt/harness/svc/service_acc.json
+  HARNESS_ENABLE_NG_AUTH_UI_PLACEHOLDER: "true"
+  ITERATOR_CONFIG_PATH: /opt/harness/config
+  ATMOSPHERE_ASYNC_WRITE_THREADPOOL_MAXSIZE: "40"
+  ATMOSPHERE_MESSAGE_PROCESSING_THREADPOOL_MAXSIZE: "40"
+  DELEGATE_TASK_REBROADCAST_ITERATOR_THREAD_COUNT: "2"
+  DISABLE_INSTANCE_SYNC_ITERATOR: "true"
+  ENABLE_CRONS: "true"
+  FAIL_DELEGATE_TASK_ITERATOR_THREAD_COUNT: "5"
+  GENERAL_CONSUMER_COUNT: "2"
+  LOCK_NOTIFY_RESPONSE_CLEANUP: "true"
+  MALLOC_ARENA_MAX: "4"
+  MONGO_MAX_DOCUMENT_LIMIT: "30000"
+  MONGO_MAX_OPERATION_TIME_IN_MILLIS: "60000"
+  NOTIFY_CONSUMER_COUNT: "2"
+  PERPETUAL_TASK_ASSIGNMENT_ITERATOR_THREAD_COUNT: "4"
+  PERPETUAL_TASK_REBALANCE_ITERATOR_THREAD_COUNT: "2"
+  PUBLISH_DELEGATE_TASK_METRICS: "false"
+  SEARCH_ENABLED: "false"
+  TIMESCALEDB_HEALTH_CHECK_NEEDED: "false"
+  USE_GLOBAL_KMS_AS_BASE_ALGO: "false"
+  GRPC_MAX_CONNECTION_AGE: "30"
+  REDISSON_PING_CONNECTION_INTERVAL_IN_MILLIS: "0"
+  JAVA_ADVANCED_FLAGS: '{{- include "harnesscommon.jfr.v1.printJavaAdvancedFlags" (dict "ctx" $) }}'
+  PLATFORM_READ_TIMEOUT: "10"
+  NG_MANAGER_READ_TIMEOUT: "15"
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  CE_SETUP_CONFIG_AZURE_STORAGE_SUFFIX: "blob.core.windows.net"
+  CE_SETUP_CONFIG_AZURE_AUTHORITY_HOST: "https://login.microsoftonline.com"
+rbac:
+  roles: []
+probes:
+  livenessProbe:
+    httpGet:
+      path: /admin/healthcheck/liveness
+      port: 7458
+      scheme: HTTP
+    timeoutSeconds: 10
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 9090
+      scheme: HTTP
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: 9090
+      scheme: HTTP
+    initialDelaySeconds: 25
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 50
+terminationMessage: {}
+#This field controls whether to deploy iterator alongside manager.
+#if set to true, it shifts the background activity from harness-manager to harness-manager-iterator(new deployment)
+#the new deployment just controls background jobs and is not responsible for receiving traffic.
+iterator:
+  enabled: false
+  resources:
+    limits:
+      memory: 8192Mi
+    requests:
+      cpu: 2
+      memory: 3072Mi
+  extraEnvVars: []
+  # extraEnvVars:
+  # - name: MEMORY
+  #   value: "4096"
+  # - name: "TEST"
+  #   value: '{{ .Values.iterator.enabled }}'
+  config:
+    iterator_config.json: |
+      {{- include "harness-manager.generateIteratorConfig" (dict "ctx" $ "iteratorList" .Values.iterator.iteratorList) | nindent 2 }}
+  iteratorList:
+    AccessRequestHandler:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 15
+      threadPoolIntervalInSeconds: 5
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    AccountInactivityCheck:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 1800
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    AccountRingInformation:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 7200
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 1
+      throttleIntervalInSeconds: 0
+    AlertReconciliation:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 600
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    ApprovalPolling:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 60
+      threadPoolIntervalInSeconds: 10
+      threadPoolSize: 20
+      throttleIntervalInSeconds: 0
+    ArtifactCleanup:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 7200
+      threadPoolIntervalInSeconds: 300
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    ArtifactCollection:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 60
+      threadPoolIntervalInSeconds: 10
+      threadPoolSize: 25
+      throttleIntervalInSeconds: 0
+    BarrierInstanceMonitor:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 60
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    CeLicenceExpiryProcessor:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 86400
+      threadPoolIntervalInSeconds: 86400
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    DelegateDisconnectDetector:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 60
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    DelegateExpiryAlert:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 86400
+      threadPoolIntervalInSeconds: 86400
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    DelegateTaskFail:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 30
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    DelegateTaskFailOnDMS:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 30
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    RunnerTransactionsCleaner:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 30
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    DelegateTelemetryPublisherIteration:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 86400
+      threadPoolIntervalInSeconds: 600
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    DeleteAccountIterator:
+      enabled: false
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 18000
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    DeletedEntityIterator:
+      enabled: false
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 43200
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    DeploymentFreezeActivities:
+      enabled: false
+      iteratorMode: LOOP
+      nextIterationMode: THROTTLE
+      targetIntervalInSeconds: 0
+      threadPoolIntervalInSeconds: 0
+      threadPoolSize: 3
+      throttleIntervalInSeconds: 45
+    DeploymentFreezeDeactivation:
+      enabled: false
+      iteratorMode: LOOP
+      nextIterationMode: THROTTLE
+      targetIntervalInSeconds: 0
+      threadPoolIntervalInSeconds: 0
+      threadPoolSize: 3
+      throttleIntervalInSeconds: 45
+    EncryptedDataLocalToGcpKmsMigrationHandler:
+      enabled: false
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 72000
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    EntityAuditRecordProcessor:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 1800
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 6
+      throttleIntervalInSeconds: 0
+    EventDelivery:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 5
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 35
+      throttleIntervalInSeconds: 0
+    ExportExecutionsRequestCleanupHandler:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 2700
+      threadPoolIntervalInSeconds: 3600
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    ExportExecutionsRequestHandler:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 1800
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    GCPBilling:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 3600
+      threadPoolIntervalInSeconds: 1800
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    GitSyncEntityExpiryCheck:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 43200
+      threadPoolIntervalInSeconds: 600
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    GitSyncPollingIterator:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 300
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    InstanceSync:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 600
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 20
+      throttleIntervalInSeconds: 0
+    LdapGroupScheduled:
+      enabled: true
+      iteratorMode: LOOP
+      nextIterationMode: THROTTLE
+      targetIntervalInSeconds: 0
+      threadPoolIntervalInSeconds: 0
+      threadPoolSize: 8
+      throttleIntervalInSeconds: 45
+    LicenseExpiryCheck:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 1800
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    PerpetualTaskAssignment:
+      enabled: true
+      iteratorMode: REDIS_BATCH
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 300
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 20
+      throttleIntervalInSeconds: 0
+      maxRecordsInOneRound: 10000
+    HighPriorityPerpetualTaskAssignment:
+      enabled: true
+      iteratorMode: REDIS_BATCH
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 60
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 20
+      throttleIntervalInSeconds: 0
+      maxRecordsInOneRound: 10000
+    ResourceConstraint-Backup:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 30
+      threadPoolIntervalInSeconds: 60
+      threadPoolSize: 20
+      throttleIntervalInSeconds: 0
+    ResourceLookupTagLinkSync:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 43200
+      threadPoolIntervalInSeconds: 43200
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    ScheduledTrigger:
+      enabled: false
+      iteratorMode: LOOP
+      nextIterationMode: THROTTLE
+      targetIntervalInSeconds: 0
+      threadPoolIntervalInSeconds: 0
+      threadPoolSize: 8
+      throttleIntervalInSeconds: 45
+    SegmentGroupEventJob:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 86400
+      threadPoolIntervalInSeconds: 1800
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    SettingAttributeValidateConnectivity:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 10800
+      threadPoolIntervalInSeconds: 600
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    SettingAttributesSecretsMigrationHandler:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 1800
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    TimeoutEngine:
+      enabled: false
+      iteratorMode: LOOP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 10
+      threadPoolIntervalInSeconds: 10
+      threadPoolSize: 5
+      throttleIntervalInSeconds: 0
+    UsageMetricsHandler:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 86400
+      threadPoolIntervalInSeconds: 30
+      threadPoolSize: 4
+      throttleIntervalInSeconds: 0
+    VaultSecretManagerRenewalHandler:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 31
+      threadPoolIntervalInSeconds: 5
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+    WorkflowExecutionMonitor:
+      enabled: true
+      iteratorMode: PUMP
+      nextIterationMode: TARGET
+      targetIntervalInSeconds: 60
+      threadPoolIntervalInSeconds: 10
+      threadPoolSize: 10
+      throttleIntervalInSeconds: 0
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 100
+    targetCPU: ""
+    targetMemory: ""
+    ## updateStrategy:
+    ##  type: RollingUpdate
+    ##  rollingUpdate:
+    ##    maxSurge: 25%
+    ##    maxUnavailable: 25%
+  updateStrategy:
+    type: RollingUpdate
+  podLabels: {}
+  podAnnotations: {}
+  securityContext:
+    runAsUser: 65534
+    runAsNonRoot: true
+  extraVolumes: []
+  # extraVolumeMounts:
+  #   - name: test-volume-mount
+  #     mountPath: /opt/harness/config
+  extraVolumeMounts: []
+  # lifecycleHooks:
+  #   postStart:
+  #     exec:
+  #       command:
+  #   preStop:
+  #     exec:
+  #       command:
+  lifecycleHooks: {}
+  probes:
+    livenessProbe:
+      httpGet:
+        path: /admin/healthcheck/liveness
+        port: 7458
+        scheme: HTTP
+      timeoutSeconds: 10
+      periodSeconds: 60
+      successThreshold: 1
+      failureThreshold: 5
+    readinessProbe:
+      httpGet:
+        path: /api/health
+        port: 9090
+        scheme: HTTP
+      timeoutSeconds: 1
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+    startupProbe:
+      httpGet:
+        path: /api/health
+        port: 9090
+        scheme: HTTP
+      initialDelaySeconds: 25
+      timeoutSeconds: 1
+      periodSeconds: 5
+      successThreshold: 1
+      failureThreshold: 50
+  nodeSelector: {}
+  tolerations: {}
+  affinity: {}
+jfr:
+  image:
+    registry: registry.access.redhat.com
+    repository: ubi8/ubi-minimal
+    pullPolicy: Always
+    tag: "8.9-1029"
+    digest: ""
+    imagePullSecrets: []
+pdb:
+  create: false

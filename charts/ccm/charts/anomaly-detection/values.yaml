@@ -1,0 +1,126 @@
+# Default values for anomaly-detection
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  loadbalancerURL: "https://test"
+  commonAnnotations: {}
+  commonLabels: {}
+  ingress:
+    enabled: false
+    className: harness
+    hosts:
+      - my-host.example.org
+    tls:
+      enabled: true
+      secretName: ''
+  monitoring:
+    enabled: false
+    port: 8081
+    path: /metrics
+secrets:
+  default: {}
+  secretManagement:
+    externalSecretsOperator: []
+    # image pull secrets to use for every image
+  imagePullSecrets: []
+replicaCount: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+java:
+  memory: "4096m"
+  memoryLimit: "4096m"
+image:
+  registry: docker.io
+  repository: harness/ce-anomaly-detection-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.19.0"
+  digest: ""
+  # image pull secrets to use for ce-anomaly-detection image
+  imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  create: false
+  annotations: {}
+  name: "harness-default"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 8081
+ingress:
+  className: nginx
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - anomaly-detection
+        topologyKey: "kubernetes.io/hostname"
+resources:
+  limits:
+    memory: "512Mi"
+  requests:
+    cpu: "512m"
+    memory: "512Mi"
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+config: {}
+rbac:
+  rules: []
+pdb:
+  create: false
+probes:
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8081
+    initialDelaySeconds: 30
+    timeoutSeconds: 5
+    periodSeconds: 20
+    failureThreshold: 6
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8081
+    initialDelaySeconds: 300
+    timeoutSeconds: 5
+    periodSeconds: 40
+    failureThreshold: 20

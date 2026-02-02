@@ -1,0 +1,261 @@
+# Default values for ng-dashboard-aggregator
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  commonAnnotations: {}
+  commonLabels: {}
+  loadbalancerURL: ""
+  monitoring:
+    enabled: false
+    port: 8889
+    managedPlatform: ""
+    path: /metrics
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+      timescaledb:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+  license:
+    cg: ''
+    ng: ''
+  ccm:
+    enabled: false
+  opa:
+    enabled: false
+  chaos:
+    enabled: false
+  stackDriverLoggingEnabled: false
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+replicaCount: 1
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+progressDeadlineSeconds: 800
+appLogLevel: "INFO"
+image:
+  registry: docker.io
+  repository: harness/ng-dashboard-aggregator-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.90.0"
+  digest: ""
+  imagePullSecrets: []
+ceGcpSetupConfigGcpProjectId: "placeHolderGcpProjectId"
+timescaleSecret:
+  password:
+    name: harness-secrets
+    key: timescaledbPostgresPassword
+java:
+  memory: "2048m"
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+imagePullSecrets: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+probes:
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: dashbrd-port
+    initialDelaySeconds: 60
+    timeoutSeconds: 10
+    periodSeconds: 10
+    failureThreshold: 10
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: dashbrd-port
+    initialDelaySeconds: 60
+    timeoutSeconds: 10
+    periodSeconds: 10
+    failureThreshold: 3
+service:
+  annotations: {}
+  type: ClusterIP
+  protocol: TCP
+  port: 7100
+resources:
+  limits:
+    memory: 4096Mi
+  requests:
+    cpu: 1
+    memory: 4096Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+additionalConfigs: {}
+java17flags: ""
+virtualService:
+  annotations: {}
+  objects:
+    - name: ng-dashboard-aggregator
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/ng-dashboard/api/'
+ingress:
+  annotations: {}
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/ng-dashboard/api(/|$)(.*)'
+config:
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  CD_CLIENT_BASEURL: http://pipeline-service:12001/api/
+  MANAGER_CLIENT_BASEURL: http://harness-manager:9090/api/
+  NG_MANAGER_CLIENT_BASEURL: http://ng-manager:7090/
+  BIG_QUERY_GCP_PROJECT_ID: segment-warehouse-236622
+  BIG_QUERY_DATA_SET: mart_product
+  BIG_QUERY_FEATURE_USAGE_TABLE: fct_feature_usage
+  BIG_QUERY_FEATURE_DEFINITION_TABLE: dim_feature_definitions
+  ACCESS_CONTROL_BASE_URL: http://access-control:9006/api/
+  REDISSON_PING_CONNECTION_INTERVAL_IN_MILLIS: "0"
+secrets:
+  default: {}
+  kubernetesSecrets: []
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys: {}
+pdb:
+  create: false

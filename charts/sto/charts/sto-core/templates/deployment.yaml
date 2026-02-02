@@ -1,0 +1,155 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "sto-core.name" $ }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "sto-core.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "sto-core.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+    {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+    {{- end }}
+      labels:
+        app: {{ include "sto-core.name" $ }}
+        {{- include "sto-core.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "sto-core.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "sto-core.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      {{- if .Values.global.database.postgres.installed }}
+          {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8}}
+      {{- end }}
+      {{- if .Values.postgres.initialStoCoreDb}}
+        - name: init-db
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.postgres.image "global" .Values.global) }}
+          env: {{- include "harnesscommon.dbconnection.postgresEnv" . | nindent 12 }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              echo "SELECT 'CREATE DATABASE \"{{ default "postgres" .Values.postgres.database }}\"' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '{{ default "postgres" .Values.postgres.database }}');\gexec" | psql {{ include "sto-core.dbCreationConnection" (dict "ctx" $) }}{{ default "" .Values.postgres.seedDatabase }}
+              echo "CREATE SCHEMA IF NOT EXISTS {{ include "sto-core.parseSearchPath" .Values.postgres.extraArgs }}" | psql {{ include "sto-core.dbCreationConnection" (dict "ctx" $ "database" (default "postgres" .Values.postgres.database) "args" "") }}{{ default "" .Values.postgres.database }}
+      {{- end }}
+      containers:
+        - name: {{ include "sto-core.name" $ }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10}}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "APP_REDIS_SSL_ENABLED" "sslCACertPath" "APP_REDIS_SSL_CA_CERT_PATH")) | indent 10 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "APP_REDIS_USERNAME" "passwordVariableName" "APP_REDIS_PASSWORD" ) | indent 10 }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 10 }}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER_MIGRATION" "passwordVariableName" "POSTGRES_PASSWORD_MIGRATION" "localDBCtx" .Values.migrationPostgres "additionalCtxIdentifier" "migration-postgres") | indent 10 }}
+          - name: APP_DATABASE_DATASOURCE
+            value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" .Values.postgres.database "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD" ) | quote }}
+          - name: APP_DB_MIGRATION_DATASOURCE
+            value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" .Values.postgres.database "userVariableName" "POSTGRES_USER_MIGRATION" "passwordVariableName" "POSTGRES_PASSWORD_MIGRATION" "localDBCtx" .Values.migrationPostgres  ) | quote }}
+          - name: BILLING_METRIC_TOPIC
+            valueFrom:
+              configMapKeyRef:
+                name: billing-metrics-shared-config
+                key: BILLING_METRICS_TOPIC_NAME
+                optional: true
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- if .Values.refidCache.enabled }}
+            - name: refid-cache-data
+              mountPath: /refid_cache
+          {{- end }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12 }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+          envFrom:
+          - configMapRef:
+              name: {{ include "sto-core.name" $ }}
+          ports:
+            - name: http
+              containerPort: {{.Values.service.port}}
+              protocol: TCP
+            - name: metrics
+              containerPort: 8889
+              protocol: TCP
+          {{- toYaml .Values.probes | nindent 10}}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.refidCache.enabled }}
+        - name: refid-cache
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.refidCache.image "global" .Values.global) }}
+          volumeMounts:
+            - name: refid-cache-data
+              mountPath: /refid_cache
+          resources:
+          {{- toYaml .Values.refidCache.resources | nindent 12 }}
+        {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "sto-core.name" $ }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if .Values.refidCache.enabled }}
+        - name: refid-cache-data
+          emptyDir:
+            sizeLimit: 6Gi
+      {{- end }}
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+      {{- end }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}

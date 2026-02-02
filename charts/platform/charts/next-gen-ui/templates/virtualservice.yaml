@@ -1,0 +1,3 @@
+# remove virtualservice.yaml from next-gen-ui, as part of SMP-1942
+# Moving virtual services from next-gen-ui to here as istio takes higher precendence on rules that are created earlier. It does not support longest prefix matching/ regex.
+# https://github.com/harness/harness-core/blob/develop/120-ng-manager/chart/templates/virtualservice.yaml

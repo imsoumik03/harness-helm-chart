@@ -1,0 +1,628 @@
+global:
+  autoscaling:
+    enabled: false
+  loadbalancerURL: ""
+  loadbalancerContext: ""
+  imagePullSecrets: []
+  commonAnnotations: {}
+  commonLabels: {}
+  database:
+    redis:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+  ingress:
+    # -- create ingress objects
+    bodySize: 1024m
+    readTimeout: 300
+    disableHostInIngress: false
+    pathPrefix: ""
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ""
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+nameOverride: ""
+fullnameOverride: ""
+image:
+  registry: docker.io
+  repository: harness/code-api-signed
+  pullPolicy: IfNotPresent
+  tag: "1.71.1"
+  digest: ""
+  imagePullSecrets: []
+redis:
+  protocol: ""
+  hosts: []
+  secretName: ""
+  userKey: ""
+  passwordKey: ""
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+secrets:
+  fileSecret:
+    - volumeMountPath: "/sshkeys"
+      keys:
+        - key: HARNESS_SSHPIPER_SSH_PUBLIC_KEY
+          path: "harness-code.rsa.pub"
+        - key: HARNESS_SSHPIPER_SSH_PRIVATE_KEY
+          path: "harness-code.rsa"
+  default:
+    HARNESS_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_JWT_BEARER_SECRET: dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq
+    HARNESS_SERVICES_IDENTITY_JWT_SECRET: HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU=
+    HARNESS_SERVICES_MANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_NGMANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_CIMANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_CODESEARCH_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_RESOURCE_GROUP_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_IAC_SERVER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_IACM_MANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_OPA_CLIENT_JWT_SECRET: dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq
+    HARNESS_SERVICES_IDP_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_STO_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_SSCA_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_CDE_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_IRO_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_AIFOUNDATION_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_REMOTEAUTH_JWT_SECRET: HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU=
+    HARNESS_GENAI_KEY: ""
+    GITNESS_REGISTRY_HTTP_SECRET: 5hPOQOL1TISq1EIsJpYlVuN4+/DfMzduYAhx0vpb+w3xJrd4XsQqHST65u7aOySv5yYczCW3zkO8BprHSIp0AQ==
+    GITNESS_REGISTRY_S3_ACCESS_KEY: ""
+    GITNESS_REGISTRY_S3_SECRET_KEY: ""
+    HARNESS_JIRA_SECRET: ""
+    GITNESS_WEBHOOK_INTERNAL_SECRET: QVuzqTWuy2W+7ETFDSuTrtqNY48MG0tXbRru9GR3ftA=
+    HARNESS_SSHPIPER_SSH_PUBLIC_KEY: ""
+    HARNESS_SSHPIPER_SSH_PRIVATE_KEY: ""
+    HARNESS_SERVICES_GITHA_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_ACL_CLIENT_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        HARNESS_JWT_SECRET: ""
+        HARNESS_JWT_BEARER_SECRET: ""
+        HARNESS_SERVICES_IDENTITY_JWT_SECRET: ""
+        HARNESS_SERVICES_MANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_NGMANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_SECRET: ""
+        HARNESS_SERVICES_CIMANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_CODESEARCH_JWT_SECRET: ""
+        HARNESS_SERVICES_RESOURCE_GROUP_JWT_SECRET: ""
+        HARNESS_SERVICES_IAC_SERVER_JWT_SECRET: ""
+        HARNESS_SERVICES_IACM_MANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_OPA_CLIENT_JWT_SECRET: ""
+        HARNESS_SERVICES_IDP_JWT_SECRET: ""
+        HARNESS_SERVICES_STO_JWT_SECRET: ""
+        HARNESS_SERVICES_SSCA_JWT_SECRET: ""
+        HARNESS_SERVICES_CDE_JWT_SECRET: ""
+        HARNESS_SERVICES_IRO_JWT_SECRET: ""
+        HARNESS_SERVICES_AIFOUNDATION_JWT_SECRET: ""
+        HARNESS_SERVICES_REMOTEAUTH_JWT_SECRET: ""
+        HARNESS_GENAI_KEY: ""
+        GITNESS_REGISTRY_HTTP_SECRET: ""
+        GITNESS_REGISTRY_S3_ACCESS_KEY: ""
+        GITNESS_REGISTRY_S3_SECRET_KEY: ""
+        HARNESS_JIRA_SECRET: ""
+        GITNESS_WEBHOOK_INTERNAL_SECRET: ""
+        HARNESS_SSHPIPER_SSH_PUBLIC_KEY: ""
+        HARNESS_SSHPIPER_SSH_PRIVATE_KEY: ""
+        HARNESS_SERVICES_GITHA_JWT_SECRET: ""
+        HARNESS_SERVICES_ACL_CLIENT_JWT_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          HARNESS_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_JWT_BEARER_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IDENTITY_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_MANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_NGMANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_CIMANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_CODESEARCH_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_RESOURCE_GROUP_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IAC_SERVER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IACM_MANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_OPA_CLIENT_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IDP_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_STO_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_SSCA_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_CDE_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IRO_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_AIFOUNDATION_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_REMOTEAUTH_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_GENAI_KEY:
+            name: ""
+            property: ""
+          GITNESS_REGISTRY_HTTP_SECRET:
+            name: ""
+            property: ""
+          GITNESS_REGISTRY_S3_ACCESS_KEY:
+            name: ""
+            property: ""
+          GITNESS_REGISTRY_S3_SECRET_KEY:
+            name: ""
+            property: ""
+          HARNESS_JIRA_SECRET:
+            name: ""
+            property: ""
+          GITNESS_WEBHOOK_INTERNAL_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SSHPIPER_SSH_PUBLIC_KEY:
+            name: ""
+            property: ""
+          HARNESS_SSHPIPER_SSH_PRIVATE_KEY:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_GITHA_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_ACL_CLIENT_JWT_SECRET:
+            name: ""
+            property: ""
+config:
+  CODE_TRACE: false
+  CODE_DEBUG: false
+  CODE_PROFILER_TYPE: "GCP"
+  CODE_PROFILER_SERVICE_NAME: "code-api"
+  CODE_ENABLE_CDN: false
+  CODE_HARNESS_SERVICES_ACL_IGNORE: false
+  CODE_HARNESS_SERVICES_ACL_CLIENT_JWT_IDENTITY: "accessControlService"
+  CODE_SERVER_GRACEFUL_SHUTDOWN_TIME: 300
+  CODE_DATABASE_DRIVER: "postgres"
+  CODE_PUBLIC_RESOURCE_CREATION_ENABLED: true
+  EVENTS_FRAMEWORK_REDIS_SSL_ENABLED: false
+  EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH: ""
+  EVENTS_FRAMEWORK_REDIS_NAMESPACE: ""
+  EVENTS_FRAMEWORK_REDIS_PASSWORD: ""
+  CODE_REDIS_USE_SENTINEL: true
+  CODE_HARNESS_REDIS_USE_SENTINEL: true
+  CODE_URL_GIT: ""
+  CODE_HARNESS_SERVICES_OPA_IGNORE: false
+  CODE_BLOBSTORE_BUCKET: ""
+  CODE_BLOBSTORE_IMPERSONATION_LIFETIME: 12h
+  CODE_BLOBSTORE_MAX_FILE_SIZE: 10485760
+  CODE_BLOBSTORE_PROVIDER: filesystem
+  CODE_BLOBSTORE_TARGET_PRINCIPAL: ""
+  CODE_INSTRUMENTATION_ENABLE: false
+  REGISTRY_URL: ""
+additionalConfig:
+  GITNESS_EVENTS_MODE: "redis"
+  # GITNESS_EVENTS_NAMESPACE: "code-api" # this would require migration, as we currently are using default "gitness"
+  GITNESS_PUBSUB_PROVIDER: "redis"
+  GITNESS_PUBSUB_APP_NAMESPACE: "code-api"
+  GITNESS_LOCK_PROVIDER: "redis"
+  GITNESS_LOCK_APP_NAMESPACE: "code-api"
+  GITNESS_REDIS_SENTINEL_MASTER: "harness-redis"
+  GITRPC_CLIENT_LOAD_BALANCING_POLICY: "round_robin"
+  GITRPC_SERVER_BIND: ":9999"
+  GITNESS_PRINCIPAL_SYSTEM_UID: "harness"
+  GITNESS_PRINCIPAL_SYSTEM_DISPLAY_NAME: "Harness"
+  GITNESS_PRINCIPAL_SYSTEM_EMAIL: "noreply@harness.io"
+  GITNESS_WEBHOOK_HEADER_IDENTITY: "Harness"
+  GITNESS_WEBHOOK_USER_AGENT_IDENTITY: "Harness"
+  GITNESS_SSH_ENABLE: "false"
+  GITNESS_SSH_HOST: ""
+  GITNESS_SSH_DEFAULT_USER: "" # In harness user is account id/name which is required for cluster routing.
+  GITNESS_SSH_CIPHERS: ""
+  GITNESS_SSH_KEY_EXCHANGES: ""
+  GITNESS_SSH_MACS: ""
+  GITNESS_SSH_HOST_KEYS: ""
+  GITNESS_SSH_TRUSTED_USER_CA_KEYS: ""
+  GITNESS_SSH_TRUSTED_USER_CA_KEYS_FILENAME: ""
+  GITNESS_SSH_KEEP_ALIVE_INTERVAL: 5s
+  GITNESS_USAGE_METRICS_ENABLED: "true"
+  HARNESS_GENAI_PROVIDER: "openai"
+  HARNESS_JWT_IDENTITY: "Code"
+  HARNESS_JWT_VALIDINMIN: "1440"
+  HARNESS_REDIS_SENTINEL_MASTER: "harness-redis"
+  HARNESS_REDIS_SSL_ENABLED: "false"
+  HARNESS_SERVICES_ACL_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_MANAGER_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_MANAGER_JWT_IDENTITY: "Manager"
+  HARNESS_SERVICES_NGMANAGER_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_NGMANAGER_JWT_IDENTITY: "NextGenManager"
+  HARNESS_SERVICES_SEMANTIC_SEARCH_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_IDENTITY: "SemanticSearch"
+  HARNESS_SERVICES_CODESEARCH_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_CODESEARCH_JWT_IDENTITY: "CodeSearch"
+  HARNESS_SERVICES_IDENTITY_JWT_IDENTITY: "IdentityService"
+  HARNESS_SERVICES_RESOURCE_GROUP_JWT_IDENTITY: "RESOUCE_GROUP_SERVICE"
+  HARNESS_SERVICES_CIMANAGER_JWT_IDENTITY: "CIManager"
+  HARNESS_SERVICES_CIMANAGER_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_NOTIFICATION_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_IAC_SERVER_JWT_IDENTITY: "IacServer"
+  HARNESS_SERVICES_IACM_MANAGER_JWT_IDENTITY: "IACMManager"
+  HARNESS_SERVICES_OPA_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_AUDIT_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_AUDIT_IGNORE: "false"
+  HARNESS_SERVICES_IDP_JWT_IDENTITY: "IDPService"
+  HARNESS_SERVICES_STO_JWT_IDENTITY: "STOManager"
+  HARNESS_SERVICES_SSCA_CLIENT_SECURE: "false"
+  HARNESS_SERVICES_SSCA_JWT_IDENTITY: "SSCAManager"
+  HARNESS_SERVICES_CDE_JWT_IDENTITY: "CDEManager"
+  HARNESS_SERVICES_IRO_JWT_IDENTITY: "IROManagerService"
+  HARNESS_SERVICES_AIFOUNDATION_JWT_IDENTITY: "aifoundation"
+  HARNESS_SERVICES_REMOTEAUTH_JWT_IDENTITY: "RemoteAuth"
+  GITNESS_REGISTRY_GARBAGE_COLLECTION_ENABLED: "false"
+  GITNESS_REGISTRY_STORAGE_TYPE: "filesystem"
+  GITNESS_REGISTRY_FILESYSTEM_ROOT_DIRECTORY: "/tmp"
+  GITNESS_REGISTRY_S3_REGION: ""
+  GITNESS_REGISTRY_S3_BUCKET: ""
+  GITNESS_REGISTRY_S3_REGION_ENDPOINT: ""
+  GITNESS_REGISTRY_S3_STORAGE_REDIRECT: "true"
+  GITRPC_CLIENT_ADDR: '{{ printf "kubernetes:///code-githa.%s.svc.cluster.local:3001" .Release.Namespace }}'
+  HARNESS_SERVICES_ACL_CLIENT_BASEURL: '{{ printf "http://access-control.%s.svc.cluster.local:9006/api/" .Release.Namespace }}'
+  HARNESS_SERVICES_MANAGER_CLIENT_BASEURL: '{{ printf "http://harness-manager.%s.svc.cluster.local:9090/api/" .Release.Namespace }}'
+  HARNESS_SERVICES_NGMANAGER_CLIENT_BASEURL: '{{ printf "http://ng-manager.%s.svc.cluster.local:7090/" .Release.Namespace }}'
+  HARNESS_SERVICES_SEMANTIC_SEARCH_CLIENT_BASEURL: '{{ printf "http://semantic-search.%s.svc.cluster.local:9101" .Release.Namespace }}'
+  HARNESS_SERVICES_CODESEARCH_CLIENT_BASEURL: '{{ printf "http://code-search.%s.svc.cluster.local/api/" .Release.Namespace }}'
+  HARNESS_SERVICES_CIMANAGER_CLIENT_BASEURL: '{{ printf "http://ci-manager.%s.svc.cluster.local:4457/" .Release.Namespace }}'
+  HARNESS_SERVICES_RESOURCE_GROUP_CLIENT_BASEURL: '{{ printf "http://resource-group.%s.svc.cluster.local:9090/api/" .Release.Namespace }}'
+  HARNESS_SERVICES_NOTIFICATION_CLIENT_BASEURL: '{{ printf "http://platform-service.%s.svc.cluster.local:9005/api/" .Release.Namespace }}'
+  HARNESS_SERVICES_IAC_SERVER_CLIENT_BASEURL: '{{ printf "http://iac-server.%s.svc.cluster.local:9090/api/" .Release.Namespace }}'
+  HARNESS_SERVICES_IACM_MANAGER_CLIENT_BASEURL: ""
+  HARNESS_SERVICES_OPA_CLIENT_BASEURL: '{{ printf "http://policy-mgmt.%s.svc.cluster.local:3000" .Release.Namespace }}'
+  HARNESS_SERVICES_AUDIT_CLIENT_BASEURL: '{{ printf "http://platform-service.%s.svc.cluster.local:9005/api" .Release.Namespace }}'
+  HARNESS_SERVICES_SSCA_CLIENT_BASEURL: '{{ printf "http://ssca-manager.%s.svc.cluster.local:7090/" .Release.Namespace }}'
+  HARNESS_SERVICES_PIPELINE_SERVICE_CLIENT_BASEURL: '{{ printf "http://pipeline-service.%s.svc.cluster.local:12001/api/" .Release.Namespace }}'
+  HARNESS_WEBHOOK_INTERNAL_URL: '{{ printf "http://ng-manager.%s.svc.cluster.local:7090/" .Release.Namespace }}'
+  HARNESS_SSH_VALIDATION_PUBLIC_KEY_PATH: "/sshkeys/harness-code.rsa.pub"
+  HARNESS_SERVICES_GITHA_JWT_IDENTITY: "githa"
+probes:
+  readinessProbe:
+    httpGet:
+      path: /api/v1/system/version
+      port: code-http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    failureThreshold: 2
+  livenessProbe:
+    httpGet:
+      path: /api/v1/system/version
+      port: code-http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 2
+resources:
+  limits:
+    memory: "1Gi"
+  requests:
+    cpu: "1024m"
+    memory: "1Gi"
+autoscaling:
+  minReplicas: 2
+  maxReplicas: 3
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "code-api"
+postgresPassword:
+  name: postgres
+  key: postgres-password
+service:
+  type: ClusterIP
+  protocol: TCP
+  port: 80
+  sshPort: 3022
+  annotations: {}
+ingress:
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/code(/|$)(.*)'
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/proxy-body-size: "32m"
+        nginx.ingress.kubernetes.io/rewrite-target: /uiv2/$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/codev2(/|$)(.*)'
+    # temp routing for autoai module
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /autoai/$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/autoai(/|$)(.*)'
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - code-api
+        topologyKey: kubernetes.io/hostname
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+database:
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    code-api:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+postgres:
+  database: "code_db"
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: "14.18.0-debian-12-r0"
+    digest: ""
+    imagePullSecrets: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+instances: ""
+initializeDatabase:
+  enabled: true
+experimental:
+  codev2Enabled: true # requires custom ingress resources to exist in the environment.
+busybox:
+  image:
+    registry: docker.io
+    repository: busybox
+    pullPolicy: IfNotPresent
+    tag: "1.37.0"
+    digest: ""
+    imagePullSecrets: []
+autoai:
+  config:
+  additionalConfig:
+    AUTOAI_DATABASE_DRIVER: "postgres"
+  pipeline:
+  postgres:
+    database: "autoai_db"
+    ## - protocol to use for connection
+    protocol: ""
+    ## - host array for external
+    hosts: []
+    image:
+      registry: docker.io
+      repository: harness/postgresql
+      pullPolicy: IfNotPresent
+      tag: "14.18.0-debian-12-r0"
+      digest: ""
+      imagePullSecrets: []
+    extraArgs: ""
+    secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""

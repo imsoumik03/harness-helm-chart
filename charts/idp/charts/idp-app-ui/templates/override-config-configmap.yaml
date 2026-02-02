@@ -1,0 +1,9 @@
+{{- if .Values.backstage.extraAppConfig }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backstage-base-config
+data:
+  override-config.yaml: |-
+    {{  tpl (.Files.Get (printf "app-config-overrides/override-config-%s.yaml" .Values.idp_env)) . | nindent 4 }}
+{{- end }}

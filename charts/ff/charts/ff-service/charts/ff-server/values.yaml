@@ -1,0 +1,620 @@
+global:
+  autoscaling:
+    enabled: false
+  cfPostgresEnabled: false
+  commonAnnotations: {}
+  commonLabels: {}
+  loadbalancerURL: "https://test"
+  monitoring:
+    enabled: false
+    managedPlatform: google
+    path: /metrics
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: IfNotPresent
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+  delegate:
+    airgapped: false
+  imagePullSecrets: []
+  istio:
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+    - '*'
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts:
+      - ''
+      gateways: []
+  ingress:
+    enabled: false
+    objects:
+      annotations: {}
+    hosts:
+      - 'my-host.example.org'
+    tls:
+      enabled: false
+      secretName: harness-cert
+  stackDriverLoggingEnabled: false
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cf:
+      enabled: false
+      protocol: ""
+      hosts:
+        - redis:6379
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cfmetrics:
+      enabled: false
+      protocol: ""
+      hosts:
+        - redis:6379
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  opa:
+    enabled: false
+
+# meta
+nameOverride: ""
+fullnameOverride: ""
+podAnnotations: {}
+podLabels: {}
+
+# image
+image:
+  registry: docker.io
+  repository: harness/ff-server-signed
+  pullPolicy: IfNotPresent
+  tag: "latest"
+  digest: ""
+  imagePullSecrets: []
+
+# resources quotas
+resources:
+  requests:
+    memory: 500M
+    cpu: 100m
+    ephemeral-storage: 250M
+  limits:
+    memory: 500M
+    ephemeral-storage: 250M
+
+# autoscaling
+replicas: 1
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPU: 70
+  targetMemory: 70
+
+# updates
+maxSurge: 1
+maxUnavailable: 0
+
+monitoring:
+  managedPlatform: google
+  path: /metrics
+  port: 3000
+
+# service
+service:
+  type: ClusterIP
+  port: 80
+  targetport: 3000
+  grpcEnabled: false
+  grpcport: 15002
+  targetgrpcport: ff-gs-grpc
+
+# deployment configuration
+serviceAccount:
+  create: false
+  annotations: {}
+  name: harness-default
+nodeSelector: {}
+tolerations: []
+affinity: {}
+lifecycleHooks: {}
+
+# security
+podSecurityContext:
+  fsGroup: 65534
+containerSecurityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+
+# additional configuration
+extraVolumeMounts: []
+extraVolumes: []
+
+job:
+  enabled: false
+  schedule: "0 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  startingDeadlineSeconds: 15
+  backoffLimit: 1
+
+  # image
+  image:
+    registry: us.gcr.io
+    repository: platform-205701/harness/saas-openjdk-8u242/ff-cron
+    pullPolicy: IfNotPresent
+    tag: 1.0.0
+    digest: ""
+    imagePullSecrets: []
+
+# harness secrets
+secrets:
+  default:
+    PLATFORM_SECRET_KEY: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    POLICY_MGMT_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    JWT_IDENTITY_SERVICE_SERCRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    PLATFORM_AUTH_KEY: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        PLATFORM_SECRET_KEY: ""
+        AUTH_SECRET: ""
+        POLICY_MGMT_SECRET: ""
+        JWT_IDENTITY_SERVICE_SERCRET: ""
+        PLATFORM_AUTH_KEY: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          PLATFORM_SECRET_KEY:
+            name: ""
+            property: ""
+          AUTH_SECRET:
+            name: ""
+            property: ""
+          POLICY_MGMT_SECRET:
+            name: ""
+            property: ""
+          JWT_IDENTITY_SERVICE_SERCRET:
+            name: ""
+            property: ""
+          PLATFORM_AUTH_KEY:
+            name: ""
+            property: ""
+
+database:
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cf:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cfmetrics:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+
+# redis secrets
+redis:
+  protocol: ""
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+
+# database secrets
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+
+timescaleSecret:
+  password:
+    name: harness-secrets
+    key: timescaledbPostgresPassword
+
+postgres:
+  enabled: false
+  database: ""
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  image:
+    registry: docker.io
+    repository: bitnami/postgresql
+    pullPolicy: IfNotPresent
+    tag: "14.9.0-debian-11-r60"
+    digest: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+
+postgresPassword:
+  name: postgres
+  key: postgres-password
+
+# application envs
+config:
+  ENV: dev
+  LOG_LEVEL: WARN
+
+  ADMIN_ENABLE: "false"
+  CLIENT_ENABLE: "false"
+  METRICS_ENABLE: "false"
+  METRICS_PROCESSING: "false"
+
+  CUSTOM_RULES_ENABLED: "true"
+  FLAG_LIFECYCLE_MANAGEMENT_ENABLED: "true"
+  GOMAXPROCS: '{{ .Values.resources.requests.cpu | quote }}'
+  RETRIEVE_DIRECTLY_ADDED_RULES: "false"
+  TARGET_ENVIRONMENT_INTERNAL_COUNT: ""
+
+  ANALYTICS_DB_DRIVER: postgres
+  ANALYTICS_DB_NAME: harnesscf
+  ANALYTICS_DB_HOST: '{{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}'
+  ANALYTICS_SSL_MODE: '{{ include "timescaleSSLMode" (dict "context" $) }}'
+  ANALYTICS_DB_PORT: '{{ include "harnesscommon.dbconnectionv2.timescalePort" (dict "context" $) | default "5432" }}'
+
+  DB_DRIVER: postgres
+  DB_NAME: cf_db
+  DB_MAX_CONNECTIONS: "30"
+  DB_MAX_IDLE_CONNECTIONS: "10"
+  DB_REPLICA_HOST: ""
+  DB_REPLICA_PORT: '{{ include "harnesscommon.dbconnectionv2.postgresPort" (dict "context" $) | default "5432" }}'
+  DB_REPLICA_MAX_CONNECTIONS: "30"
+  DB_REPLICA_MAX_IDLE_CONNECTIONS: "10"
+
+  REDIS_POOL_SIZE: "100"
+  REDIS_CACHE_CLEAN_START_TIME: "12:00"
+  REDIS_URL: '{{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $ "unsetProtocol" true) }}'
+  REDIS_STREAM_MAX_LENGTH: "2048"
+  REDIS_STREAM_APPROX_LENGTH: "true"
+  REDIS_STREAM_VISIBILITY_TIMEOUT: "5s"
+  REDIS_STREAM_BLOCKING_TIMEOUT: "10s"
+  REDIS_STREAM_RECLAIM_INTERVAL: "5s"
+  REDIS_STREAM_BUFFER_SIZE: "100"
+  REDIS_STREAM_CONCURRENCY: "100"
+
+  EVENT_BUS: msg-broker
+  EVENTS_FRAMEWORK_REDIS_SENTINEL_URLS: '{{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $ "unsetProtocol" true) }}'
+  EVENTS_FRAMEWORK_REDIS_ENV: cf
+  EVENTS_FRAMEWORK_USE_REDIS_PASSWORD: '{{ not .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINEL_MASTER: harness-redis
+  MSG_BROKER_PROVIDER: redis
+  MSG_BROKER_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+
+  USE_CF_REDIS: '{{ not .Values.global.database.redis.installed }}'
+  CF_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cf" "unsetProtocol" true) }}'
+  CF_REDIS_USE_PASSWORD: '{{ not .Values.global.database.redis.installed }}'
+  CF_REDIS_POOL_SIZE: "500"
+  CF_REDIS_SENTINEL_MASTER: harness-redis
+  CF_REDIS_SENTINEL_URLS: '{{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $ "unsetProtocol" true) }}'
+  CF_REDIS_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  CF_REDIS_USE_TLS: "false"
+
+  METRICS_REDIS_USE_PASSWORD: '{{ not .Values.global.database.redis.installed }}'
+  METRICS_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cfmetrics") }}'
+  METRICS_REDIS_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  METRICS_REDIS_SENTINEL_URLS: '{{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $ "unsetProtocol" true) }}'
+  METRICS_REDIS_SENTINEL_MASTER: harness-redis
+
+  ACCESS_CONTROL_SERVICE: 'http://access-control.{{ .Release.Namespace }}.svc.cluster.local:9006'
+  ACCESS_CONTROL_BASE_PATH: /api
+
+  AIDA_BASE_API: 'http://genai-service.{{ .Release.Namespace }}.svc.cluster.local:8000'
+
+  CACHE_PROVIDER_URLS: '{{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $ "unsetProtocol" true) }}'
+
+  FF_CLIENT_SERVICE_URL: ""
+  FF_METRICS_SERVICE_URL: ""
+
+  GIT_SYNC_URL: "ng-manager.{{ .Release.Namespace }}.svc.cluster.local:13002"
+  GIT_SYNC_AUTHORITY: "ng-manager.{{ .Release.Namespace }}.svc.cluster.local:13002"
+  GIT_SYNC_ENABLED: "true"
+  GIT_SYNC_SERVER_USE_SSL: "false"
+  GIT_SYNC_WEBHOOK_LISTEN_ADDR: 0.0.0.0:15002
+  GIT_SYNC_WEBHOOK_ENABLED: "false"
+
+  GRIP_URL: 'http://pushpin.{{ .Release.Namespace }}.svc.cluster.local:5561'
+
+  JIRA_BASE_URL: https://harness.io/gateway/cf/jira
+
+  PIPELINE_BASE_URL: 'http://pipeline-service.{{ .Release.Namespace }}.svc.cluster.local:12001/api'
+
+  PLATFORM_INTEGRATION_ENABLED: "true"
+  PLATFORM_BASE_URL: 'http://ng-manager.{{ .Release.Namespace }}.svc.cluster.local:7090'
+  PLATFORM_BASE_API: 'http://platform-service.{{ .Release.Namespace }}.svc.cluster.local:9005'
+  PLATFORM_SERVICE_URL: 'http://platform-service.{{.Release.Namespace}}.svc.cluster.local:9005'
+
+  POLICY_MGMT_ENABLED: "true"
+  POLICY_MGMT_SERVICE_URL: "http://policy-mgmt.{{.Release.Namespace}}.svc.cluster.local:3000/"
+
+  UI_BASE_URL: https://app.harness.io/

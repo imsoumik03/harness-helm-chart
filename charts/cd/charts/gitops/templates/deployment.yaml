@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "gitops.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitops.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "gitops.selectorLabels" . | nindent 6 }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      annotations:
+        rollme: {{ randAlphaNum 5 | quote }}
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        app: {{ include "gitops.name" . }}
+        {{- include "gitops.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "gitops.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "gitops.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if .Values.global.database.mongo.installed }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+        {{- end }}
+        {{- if .Values.global.database.timescaledb.installed }}
+          {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-timescale" "appName" "timescaledb-single-chart") | nindent 8}}
+        {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image:  {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: gitops-http
+              containerPort: {{ .Values.service.httpServerPort }}
+              protocol: TCP
+            - name: gitops-grpc
+              containerPort: {{ .Values.service.grpcServerPort }}
+              protocol: TCP
+            {{- include "harnesscommon.monitoring.containerPort" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "gitops.name" . }}
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "REDIS_SSL_ENABLED" "sslCACertPath" "REDIS_SSL_CA_CERT_PATH")) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "REDIS_USERNAME" "passwordVariableName" "REDIS_PASSWORD" ) | indent 12 }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "GITOPS_SERVICE_TIMESCALE_USER_NAME" "passwordVariableName" "GITOPS_SERVICE_TIMESCALE_PASSWORD" ) | indent 12 }}
+            - name: GITOPS_SERVICE_TIMESCALE_URL
+              value: {{ include "harnesscommon.dbconnectionv4.timescaleConnection" (dict "protocol" "postgres" "userVariableName" "GITOPS_SERVICE_TIMESCALE_USER_NAME" "passwordVariableName" "GITOPS_SERVICE_TIMESCALE_PASSWORD" "database" "harness_gitops" "addSSLModeArg" true "context" $) }}
+            {{- if .Values.global.database.timescaledb.installed }}
+            {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "TIMESCALEDB_USERNAME" "passwordVariableName" "TIMESCALE_PASSWORD" "enableSslVariableName" "GITOPS_SMP_ADMIN_TIMESCALE_USE_TLS" "certPathVariableName" "GITOPS_SMP_ADMIN_TIMESCALE_CERT_PATH" "certPathValue" "/opt/harness/svc/timescaledb-pem") | indent 12 }}
+            - name: GITOPS_SMP_ADMIN_TIMESCALE_URL
+              value: {{ include "harnesscommon.dbconnectionv4.timescaleConnection" (dict "protocol" "postgres" "userVariableName" "TIMESCALEDB_USERNAME" "passwordVariableName" "TIMESCALE_PASSWORD" "database" "" "addSSLModeArg" true "context" $) }}            
+            {{- end }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness-gitops") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database" "harness-gitops" "connectionURIVariableName" "GITOPS_SERVICE_MONGODB_URL") | indent 12 }}
+          {{- toYaml .Values.probes | nindent 10}}
+          {{- if .Values.terminationMessage }}
+            {{- toYaml .Values.terminationMessage | nindent 10}}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12 }}
+            {{- if .Values.global.database.timescaledb.sslEnabled }}
+            - name: timescaledb-cert
+              mountPath: /opt/harness/svc
+            {{- end }}
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+        {{- if .Values.global.database.timescaledb.sslEnabled }}
+        - name: timescaledb-cert
+          secret:
+            secretName: {{ .Values.global.database.timescaledb.certName }}
+            items:
+            - key: {{ .Values.global.database.timescaledb.certKey }}
+              path: timescaledb-pem
+        {{- end }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "gitops.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

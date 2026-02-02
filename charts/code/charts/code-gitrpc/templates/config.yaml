@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "code-gitrpc.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.additionalConfig "context" $) | nindent 2}}
+  # Gitrpc core values
+  GITRPC_SERVER_TRACE: {{ .Values.config.CODE_TRACE | quote }}
+  GITRPC_SERVER_DEBUG: {{ .Values.config.CODE_DEBUG | quote }}
+  GITRPC_SERVER_GIT_TRACE: {{ .Values.config.CODE_GITRPC_SERVER_GIT_TRACE | quote }}
+  GITRPC_PROFILER_TYPE: {{ .Values.config.CODE_PROFILER_TYPE | quote }}
+  GITRPC_PROFILER_SERVICE_NAME: {{ .Values.config.CODE_PROFILER_SERVICE_NAME | quote }}
+  GITRPC_SERVER_GIT_ROOT: {{ .Values.config.CODE_GIT_ROOT | quote }}
+  GITRPC_LAST_COMMIT_CACHE_MODE: "redis"
+
+
+  GITRPC_REDIS_ENDPOINT: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "code-gitrpc" "unsetProtocol" true) }}
+  GITRPC_REDIS_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote }}
+  GITRPC_REDIS_SENTINEL_ENDPOINT: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "code-gitrpc" "unsetProtocol" true) }}
+
+
+  GITRPC_SERVER_PORT: {{ .Values.config.CODE_GITRPC_SERVER_PORT | quote }}
+  GITRPC_SERVER_HTTP_PORT: {{ .Values.config.CODE_GITRPC_SERVER_HTTP_PORT | quote }}
+
+  # balance requests load among grpc servers
+  GITRPC_SERVER_MAX_CONN_AGE: {{ .Values.config.CODE_GITRPC_SERVER_MAX_CONN_AGE | quote}}
+  GITRPC_SERVER_MAX_CONN_AGE_GRACE: {{ .Values.config.CODE_GITRPC_SERVER_MAX_CONN_AGE_GRACE | quote}}
+
+  GITRPC_SERVER_GRACEFUL_SHUTDOWN_TIME: {{ int .Values.config.CODE_SERVER_GRACEFUL_SHUTDOWN_TIME | printf "%ds" | quote}}

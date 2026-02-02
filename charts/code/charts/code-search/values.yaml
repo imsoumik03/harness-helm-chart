@@ -1,0 +1,314 @@
+global:
+  imagePullSecrets: []
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+  storageClass: ""
+  storageClassName: ""
+pvname: code-search
+instances: 3
+nameOverride: ""
+fullnameOverride: ""
+image:
+  registry: docker.io
+  repository: harness/code-search-signed
+  pullPolicy: IfNotPresent
+  tag: "1.71.1"
+  digest: ""
+  imagePullSecrets: []
+config:
+  CODESEARCH_TRACE: false
+  CODESEARCH_DEBUG: false
+  CODESEARCH_PROFILER_TYPE: "GCP"
+  CODESEARCH_PROFILER_SERVICE_NAME: "code-search"
+  CODESEARCH_SERVER_GRACEFUL_SHUTDOWN_TIME: 30
+  CODESEARCH_HTTP_PORT: 9201
+  CODESEARCH_DIR_INDEX: /app/data/index
+  CODESEARCH_DIR_REPO: /app/data/repo
+  CODESEARCH_DIR_CLEANUP: /app/data/cleanup
+  CODESEARCH_SCHEDULER_INTERVAL: 60s
+  CODESEARCH_SCHEDULER_CLEANUP_INTERVAL: 24h
+  CODESEARCH_SCHEDULER_POOL_SIZE: 20
+  CODESEARCH_OWNERSHIP_REPLICATION_FACTOR: 1
+  CODESEARCH_NODES_CONFIG_PATH: /app/config/nodes.yaml
+  CODESEARCH_CODE_API_JWT_IDENTITY: "CodeSearch"
+  CODESEARCH_PV_STORAGE: 10Gi
+  CODESEARCH_STORAGE_CLASS_NAME:
+  mountPath: /app/data
+  CODESEARCH_DATABASE_DRIVER: "postgres"
+  CODESEARCH_FILE_SIZE_MAX: 0
+  CODESEARCH_TRIGRAM_COUNT_MAX: 0
+postgresPassword:
+  name: postgres
+  key: postgres-password
+postgres:
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: "14.18.0-debian-12-r0"
+    digest: ""
+    imagePullSecrets: []
+initializeDatabase:
+  enabled: true
+redis:
+  protocol: ""
+  hosts: []
+  secretName: ""
+  userKey: ""
+  passwordKey: ""
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+database:
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    code-search:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+secrets:
+  default:
+    HARNESS_SERVICES_CODE_API_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_JWT_BEARER_SECRET: ""
+    HARNESS_SERVICES_IDENTITY_JWT_SECRET: HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU=
+    HARNESS_SERVICES_MANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_NGMANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_CIMANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_CODESEARCH_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_RESOURCE_GROUP_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_IAC_SERVER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_IACM_MANAGER_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_OPA_CLIENT_JWT_SECRET: dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq
+    HARNESS_SERVICES_IDP_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_SERVICES_STO_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    HARNESS_GENAI_KEY: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        HARNESS_JWT_SECRET: ""
+        HARNESS_JWT_BEARER_SECRET: ""
+        HARNESS_SERVICES_IDENTITY_JWT_SECRET: ""
+        HARNESS_SERVICES_MANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_NGMANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_SECRET: ""
+        HARNESS_SERVICES_CIMANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_CODESEARCH_JWT_SECRET: ""
+        HARNESS_SERVICES_RESOURCE_GROUP_JWT_SECRET: ""
+        HARNESS_SERVICES_IAC_SERVER_JWT_SECRET: ""
+        HARNESS_SERVICES_IACM_MANAGER_JWT_SECRET: ""
+        HARNESS_SERVICES_OPA_CLIENT_JWT_SECRET: ""
+        HARNESS_SERVICES_IDP_JWT_SECRET: ""
+        HARNESS_SERVICES_STO_JWT_SECRET: ""
+        HARNESS_GENAI_KEY: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          HARNESS_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_JWT_BEARER_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IDENTITY_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_MANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_NGMANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_SEMANTIC_SEARCH_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_CIMANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_CODESEARCH_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_RESOURCE_GROUP_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IAC_SERVER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IACM_MANAGER_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_OPA_CLIENT_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_IDP_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_SERVICES_STO_JWT_SECRET:
+            name: ""
+            property: ""
+          HARNESS_GENAI_KEY:
+            name: ""
+            property: ""
+resources:
+  limits:
+    memory: "1Gi"
+  requests:
+    cpu: "1024m"
+    memory: "1Gi"
+serviceAccount:
+  create: false
+  annotations: {}
+  name: "harness-default"
+harnessDisks:
+  disks: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+additionalConfigs: {}
+NODES: []
+busybox:
+  image:
+    registry: docker.io
+    repository: busybox
+    pullPolicy: IfNotPresent
+    tag: "1.37.0"
+    digest: ""
+    imagePullSecrets: []

@@ -1,0 +1,707 @@
+# Default values for ssca-manager.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  fips: false
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  ha: true
+  stackDriverLoggingEnabled: false
+  database:
+    elastic:
+      installed: true
+      protocol: elastic
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              ELASTIC_USERNAME: ""
+              ELASTIC_PASSWORD: ""
+              ELASTIC_API_KEY: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                ELASTIC_USER:
+                  name: ""
+                  property: ""
+                ELASTIC_PASSWORD:
+                  name: ""
+                  property: ""
+                ELASTIC_API_KEY:
+                  name: ""
+                  property: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: "redis-secret"
+      userKey: "redis-user"
+      passwordKey: "redis-password"
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+      certKey: ""
+  monitoring:
+    enabled: false
+    port: 8889
+    path: /metrics
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    objects:
+      annotations: {}
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  imagePullSecrets: []
+  jfr:
+    enabled: false
+  waitForInitContainer:
+    ## image version
+    ## ref: https://hub.docker.com/r/harness/helm-init-container/tags
+    # --image.registry ; image registry
+    # --image.repository ; image repository
+    # --image.tag ; image tag (immutable tags are recommended)
+    # --image.digest ; image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+    # --image.pullPolicy Image pull policy
+    # --image.imagePullSecrets Specify docker-registry secret names as an array
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+    containerSecurityContext:
+      runAsUser: 65534
+      runAsNonRoot: true
+    enabled: true
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+replicaCount: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+image:
+  registry: docker.io
+  repository: harness/ssca-manager-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.46.13"
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+timescaleSecret:
+  password:
+    name: harness-secrets
+    key: timescaledbPostgresPassword
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+podAnnotations: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 8188
+ingress:
+  annotations: {}
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/ssca-manager(/|$)(.*)'
+    - name: ssca-manager-v1-apis
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$1
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/sbom/process)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/sbom/enforcement)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/orchestration/.+/sbom-download)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/orchestration/.+/summary)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/enforcement/.+/summary)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/enforcement/.+/policy-violations)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/enforcement-result)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/enforcement-summary)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/org/.+/project/.+/normalised-sbom-component)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/remediations.*)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/exemptions.*)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/token)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/version)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/artifacts/.+/components/ticket)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/integration/integration-summary)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/sbom-score)'
+virtualService:
+  annotations: {}
+  objects:
+    - name: ssca-manager-apis
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/ssca-manager/'
+    - name: ssca-manager-v1-apis
+      pathMatchType: regex
+      pathRewrite: "/\\1"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact-sources/[^\/]+/artifacts/[^\/]+/overview)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/pipelines/[^\/]+/executions/[^\/]+/artifacts)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/pipelines/[^\/]+/executions/[^\/]+/ssca-summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/artifacts/[^\/]+/deployments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/artifacts/[^\/]+/details)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/artifacts/[^\/]+/environments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/ssca-config/[^\/]+/type/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact/[^\/]+/compliance-results/list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifacts/[^\/]+/components/ticket)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ci-cd/[^\/]+/rules/evalution-trend)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ci-cd/harness/pipeline/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/code-repos/[^\/]+/rules/evalution-trend)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-results/compliances/[^\/]+/artifacts)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/enforcement/[^\/]+/policy-violations)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/enforcement/[^\/]+/summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/orchestration/[^\/]+/sbom-download)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/orchestration/[^\/]+/sbom-scorecard)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/orchestration/[^\/]+/summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact-sources/[^\/]+/artifacts)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact-sources/[^\/]+/baseline)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact/[^\/]+/baseline)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifacts/[^\/]+/components)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifacts/[^\/]+/deployments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ci-cd/[^\/]+/overview)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ci-cd/[^\/]+/plugins)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/code-repos/[^\/]+/overview)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-standards/compliances/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/integration/[^\/]+/fetch-repos)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/integration/[^\/]+/repos)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/orchestration/[^\/]+/sbom-drift)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/artifacts)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/close)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/create-ticket)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/details)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+/exclude-artifact)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/sbom-drift/[^\/]+/components)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/sbom-drift/[^\/]+/licenses)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/signing/[^\/]+/save-integrity-verification)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/signing/[^\/]+/save-signature)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/slsa-verification/[^\/]+/policy-violations)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/ssca-config/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-stats/evaluation-breakdown/artifacts)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/integration/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/provenance/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ci-cd/list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ci-cd/summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/code-repos/list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/code-repos/summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-results/compliances)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-results/list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-standards/list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-stats/checks)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-stats/evaluation-breakdown)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-stats/evaluation-trend)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/integration/harness-pipeline)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/check-artifacts)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations/overall-summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/signing/download-signature)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/signing/upload-signature)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ssca-config/integration-step)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/ssca-config/pipeline-store)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/enforcement-result)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/enforcement-summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/project/[^\/]+/ssca-config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact-overview)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifact-sources)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/compliance-standards)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/components)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/integration)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/remediations)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/sbom-download)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/sbom-score)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/org/[^\/]+/ssca-config/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/ssca-config/integration-step)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/license/ssca/usage)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/ssca-config/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/ssca-config/execution-limit/config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/base-image/details)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/compliance-standards/filters)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/configs/pipeline)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/integrations/config)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/ssca-config/integration-step)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/ssca-config/integrations)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/ssca-config/pipeline-infra)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/repository)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/token)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/version)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/artifacts/[^\/]+/components/ticket)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/integration/integration-summary)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/sbom-score)\/?$'
+    - name: ssca-manager-v2-apis
+      pathMatchType: regex
+      pathRewrite: "/\\2"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v2/orgs/[^\/]+/projects/[^\/]+/artifacts/[^\/]+/chain-of-custody)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v2/orgs/[^\/]+/projects/[^\/]+/provenance/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v2/orgs/[^\/]+/projects/[^\/]+/slsa-verification/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v2/orgs/[^\/]+/projects/[^\/]+/sbom/enforcement)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v2/orgs/[^\/]+/projects/[^\/]+/compliance-results)\/?$'
+resources:
+  limits:
+    memory: 8192Mi
+  requests:
+    cpu: 1
+    memory: 1024Mi
+shutdownHooksEnabled: false
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+java:
+  memory: 4096m
+java17flags: ""
+elastic:
+  hosts: []
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          ELASTIC_USERNAME: ""
+          ELASTIC_PASSWORD: ""
+          ELASTIC_API_KEY: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            ELASTIC_USERNAME:
+              name: ""
+              property: ""
+            ELASTIC_PASSWORD:
+              name: ""
+              property: ""
+            ELASTIC_API_KEY:
+              name: ""
+              property: ""
+database:
+  mongo:
+    ssca:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    lock:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    cache:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+jfr:
+  image:
+    registry: registry.access.redhat.com
+    repository: ubi8/ubi-minimal
+    pullPolicy: Always
+    tag: "8.9-1029"
+    digest: ""
+    imagePullSecrets: []
+rbac:
+  rules: []
+deploymentProjectId: 'harness'
+ssca:
+  bucketName: "sbom-store"
+# Preference order is ESO > K8sSecret.
+# Hence, if S3 keys are mentioned in ESO, they would be picked or else we pick default from K8sSecrets minio.
+secrets:
+  default:
+    POLICY_MGMT_SERVICE_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+    COMPONENT_SERVICE_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    ELASTIC_API_KEY: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        POLICY_MGMT_SERVICE_SECRET: ""
+        COMPONENT_SERVICE_SECRET: ""
+    - secretName: "minio"
+      keys:
+        S3_ACCESS_KEY_ID: "root-user"
+        S3_ACCESS_SECRET_KEY: "root-password"
+    - secretName: "harness-secrets"
+      keys:
+        STO_SERVICE_GLOBAL_TOKEN: "stoAppHarnessToken"
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          POLICY_MGMT_SERVICE_SECRET:
+            name: ""
+            property: ""
+          S3_ACCESS_KEY_ID:
+            name: ""
+            property: ""
+          S3_ACCESS_SECRET_KEY:
+            name: ""
+            property: ""
+          ELASTIC_API_KEY:
+            name: ""
+            property: ""
+          COMPONENT_SERVICE_SECRET:
+            name: ""
+            property: ""
+config:
+  SERVER_PORT: "8188"
+  LOGGING_LEVEL: INFO
+  MONGO_INDEX_MANAGER_MODE: AUTO
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  CACHE_BACKEND: REDIS
+  CACHE_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: harness-redis
+  LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  ACCESS_CONTROL_ENABLED: "true"
+  JAVA_ADVANCED_FLAGS: '{{- include "harnesscommon.jfr.v1.printJavaAdvancedFlags" (dict "ctx" $) }}'
+  NG_MANAGER_BASE_URL: 'http://ng-manager.{{ .Release.Namespace }}.svc.cluster.local:7090'
+  MEMORY: '{{ .Values.java.memory }}'
+  STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
+  S3_BUCKET: '{{ .Values.ssca.bucketName }}'
+  S3_ENDPOINT: 'http://minio.{{ .Release.Namespace }}.svc.cluster.local:9000'
+  S3_REGION: 'US'
+  PIPELINE_SERVICE_CLIENT_BASEURL: 'http://pipeline-service.{{ .Release.Namespace }}.svc.cluster.local:12001/api/'
+  MANAGER_CLIENT_BASEURL: 'http://harness-manager.{{ .Release.Namespace }}.svc.cluster.local:9090/api/'
+  COMPONENT_SERVICE_CLIENT_BASEURL: 'http://component-service.{{ .Release.Namespace }}.svc.cluster.local:8088/api/'
+  POLICY_MGMT_SERVICE_BASEURL: 'http://policy-mgmt.{{ .Release.Namespace }}.svc.cluster.local:3000/'
+  ACCESS_CONTROL_BASE_URL: 'http://access-control.{{ .Release.Namespace }}.svc.cluster.local:9006/api/'
+  STO_SERVICE_BASEURL: 'http://sto-core.{{ .Release.Namespace }}.svc.cluster.local:4000/'
+  STO_SERVICE_REST_CLIENT_BASEURL: 'http://sto-core.{{ .Release.Namespace }}.svc.cluster.local:4000/api/'
+  AUDIT_CLIENT_BASEURL: 'http://platform-service.{{ .Release.Namespace }}.svc.cluster.local:9005/api/'
+  ENABLE_AUDIT: 'true'
+  ELASTIC_INDEX_NAME: '{{ .Values.deploymentProjectId }}-ssca'
+  ENABLE_ELASTIC: 'false'
+  ELASTIC_URL: '{{ include "harnesscommon.dbconnectionv2.elasticConnection" (dict "context" $) }}'
+  USE_WORKLOAD_IDENTITY: 'false'
+  PIPELINE_DEV_NAMESPACE: '{{ .Release.Namespace }}'
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  LOCK_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  CACHE_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache") }}'
+  CACHE_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  CACHE_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache") }}'
+  REDISSON_PING_CONNECTION_INTERVAL_IN_MILLIS: "0"
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+pdb:
+  create: false

@@ -1,0 +1,62 @@
+apiVersion: v2
+appVersion: 1.0.80917
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+- condition: global.ccm.enabled
+  name: ccm
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.cd.enabled
+  name: cd
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.chaos.enabled
+  name: chaos
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.ci.enabled
+  name: ci
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.ff.enabled
+  name: ff
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: platform
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.cd.enabled
+  name: srm
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.sto.enabled
+  name: sto
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.ssca.enabled
+  name: ssca
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.dbops.enabled
+  name: db-devops
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.code.enabled
+  name: code
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.iacm.enabled
+  name: iacm
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- condition: global.idp.enabled
+  name: idp
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+description: Helm Chart for deploying Harness.
+kubeVersion: '>=1.27.0-0'
+name: harness
+type: application
+version: 0.36.0-qa.20260202.23050.77

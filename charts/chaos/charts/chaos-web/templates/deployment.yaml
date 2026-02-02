@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chaos-web.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    component: {{ include "chaos-web.name" . }}
+    app: {{ include "chaos-web.name" . }}
+    {{- include "chaos-web.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      component: {{ include "chaos-web.name" . }}
+      app: {{ include "chaos-web.name" . }}
+      {{- include "chaos-web.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+        {{- if .Values.podAnnotations }}
+          {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        component: {{ include "chaos-web.name" . }}
+        app: {{ include "chaos-web.name" . }}
+        {{- include "chaos-web.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "chaos-web.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "chaos-web.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "chaos-web.name" . }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+          command: {{- include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 12 }}
+          args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "/opt/entrypoint.sh") | nindent 12 }}
+          {{- end }}          
+          envFrom:
+            - configMapRef:
+                name: chaos-web-config
+          ports:
+            - containerPort: {{.Values.service.port}}
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          {{- toYaml .Values.probes | nindent 10 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+        {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+        {{- end }}
+          
+          volumeMounts:
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{ include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "tmp" "mountPath" "/tmp") (dict "name" "nginx-logs" "mountPath" "/var/log/nginx")) ) | nindent 12 }}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      
+      volumes:
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+        {{ include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "tmp" "type" "emptyDir") (dict "name" "nginx-logs" "type" "emptyDir")) ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+        {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "chaos-web.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

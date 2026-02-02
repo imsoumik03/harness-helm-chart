@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-service
+  namespace: {{ .Release.Namespace }}
+  {{- if .Values.global.commonLabels }}
+  labels:
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations:
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- /* Log service configuration */ -}}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2 }}
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
+  {{- /* Additional configuration
+  TODO THIS SHOULD BE REMOVED IN THE FUTURE, THERE IS NO REASON TO USE ADDITIONAL CONFIGS, .Values.config already does the same */ -}}
+  {{- if .Values.additionalConfigs }}
+  {{- toYaml .Values.additionalConfigs | nindent 2 }}
+  {{- end }}
+  

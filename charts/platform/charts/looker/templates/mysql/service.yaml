@@ -1,0 +1,18 @@
+{{- if .Values.mysql.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "looker.name" . }}-mysql
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "looker.labels" . | nindent 4 }}
+spec:
+  type: {{.Values.service.type}}
+  ports:
+    - name: {{ include "looker.name" . }}-mysql
+      port: {{ .Values.mysql.port }}
+      protocol: TCP
+      targetPort: {{ include "looker.name" . }}-mysql
+  selector:
+    {{- include "looker.selectorLabels" . | nindent 4 }}
+{{- end}}

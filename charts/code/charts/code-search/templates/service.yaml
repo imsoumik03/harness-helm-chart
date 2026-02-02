@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name:  {{ include "codesearch.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "codesearch.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: {{ .Values.config.CODESEARCH_HTTP_PORT }}
+    protocol: TCP
+    name: http
+  selector:
+    app:  {{ include "codesearch.name" . }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name:  {{ include "codesearch.name" . }}-headless
+  namespace: {{ .Release.Namespace }}
+spec:
+  clusterIP: None
+  ports:
+  - port: {{ .Values.config.CODESEARCH_HTTP_PORT }}
+    targetPort: {{ .Values.config.CODESEARCH_HTTP_PORT }}
+    protocol: TCP
+    name: {{ include "codesearch.name" . }}-headless
+  selector:
+    app: {{ include "codesearch.name" . }}

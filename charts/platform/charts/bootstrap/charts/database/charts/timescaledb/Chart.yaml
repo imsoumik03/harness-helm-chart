@@ -1,0 +1,14 @@
+apiVersion: v2
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+- alias: tsdbarchive
+  condition: archive_enabled
+  name: minio
+  repository: file://../minio
+  version: 17.0.x
+description: TimescaleDB HA Deployment.
+home: https://github.com/harness/helm-timescale
+name: timescaledb
+version: 0.10.12

@@ -1,0 +1,10 @@
+apiVersion: v2
+appVersion: 1.32.0
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart for Kubernetes
+name: chaos-machine-ifs
+type: application
+version: 1.72.3

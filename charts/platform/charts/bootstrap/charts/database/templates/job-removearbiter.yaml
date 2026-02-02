@@ -1,0 +1,242 @@
+{{- if and .Values.global.database.mongo.installed .Values.mongodbupgrades.removeArbiter.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "remove-arbiter-{{ .Values.mongodbupgrades.removeArbiter.image.tag | sha256sum | trunc 8 }}"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  activeDeadlineSeconds: 1080  # 18 minutes: 5 min MongoDB wait + 1 min RS config + 10 min arbiter wait + 2 min operations
+  ttlSecondsAfterFinished: {{ .Values.mongodbupgrades.removeArbiter.ttlSecondsAfterFinished | default 900 }}  # Configurable TTL with default of 15 min
+  template:
+    spec:
+      {{- include "common.images.pullSecrets" (dict "images" (list .Values.mongodbupgrades.removeArbiter.image) "global" .Values.global) | nindent 6 }}
+      serviceAccountName: mongodb-replicaset-chart
+      {{- with .Values.mongodbupgrades.removeArbiter.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongodbupgrades.removeArbiter.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.mongodbupgrades.removeArbiter.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+      - name: mongo-remove-arbiter
+        securityContext:
+          runAsUser: 1001
+          runAsNonRoot: true
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.mongodbupgrades.removeArbiter.image "global" .Values.global) }}
+        command: ["/bin/sh", "-c"]
+        args:
+        - |
+          echo "====== Starting MongoDB Arbiter Removal Job ======"
+          echo "$(date): Job initiated"
+          
+          # Setup error handling
+          set +e  # Don't exit on error immediately, handle errors explicitly
+          echo "Error handling set up - script will handle errors explicitly"
+
+          # Enable cleaner logging format with timestamps
+          log_ts() {
+            echo "$(date +'%Y-%m-%d %H:%M:%S') [${1}] ${2}"
+          }
+
+          log_ts "INFO" "Environment diagnosis:"
+          log_ts "INFO" "Pod name: $HOSTNAME"
+          log_ts "INFO" "Namespace: {{ .Release.Namespace }}"
+          log_ts "INFO" "MongoDB server time: $(date)"
+          
+          # Construct arbiter hostname
+          ARBITER_HOST="mongodb-replicaset-chart-arbiter-0.mongodb-replicaset-chart-arbiter-headless.{{ .Release.Namespace }}.svc.cluster.local:27017"
+          log_ts "INFO" "Target arbiter host: $ARBITER_HOST"
+          
+          log_ts "INFO" "Waiting for MongoDB to be available..."
+          
+          # Wait for MongoDB to be ready (handles fresh install cases)
+          MONGO_WAIT_TIME=300  # 5 minutes maximum wait for MongoDB
+          MONGO_POLL_INTERVAL=10
+          mongo_elapsed=0
+          mongo_ready=0
+          
+          while [ $mongo_elapsed -lt $MONGO_WAIT_TIME ]; do
+            log_ts "INFO" "Attempting to connect to MongoDB... (elapsed: ${mongo_elapsed}s)"
+            
+            server_version=$(mongosh --quiet --eval 'db.version()' $MONGO_URI 2>/dev/null)
+            if [ $? -eq 0 ]; then
+              log_ts "INFO" "MongoDB Server Version: $server_version"
+              log_ts "INFO" "Successfully connected to MongoDB server"
+              mongo_ready=1
+              break
+            fi
+            
+            log_ts "INFO" "MongoDB not ready yet. Waiting ${MONGO_POLL_INTERVAL} seconds before retry..."
+            sleep $MONGO_POLL_INTERVAL
+            mongo_elapsed=$((mongo_elapsed + MONGO_POLL_INTERVAL))
+          done
+          
+          if [ $mongo_ready -eq 0 ]; then
+            log_ts "ERROR" "Timeout waiting for MongoDB to be available (${MONGO_WAIT_TIME}s)"
+            log_ts "ERROR" "MongoDB may not be running or credentials are incorrect"
+            log_ts "ERROR" "Job will retry (backoffLimit: 3)"
+            exit 1
+          fi
+
+          log_ts "INFO" "Checking replica set configuration..."
+          
+          # Wait for replica set to be initialized
+          rs_config=""
+          rs_config_elapsed=0
+          RS_CONFIG_WAIT_TIME=60  # 1 minute for RS to be configured
+          
+          while [ $rs_config_elapsed -lt $RS_CONFIG_WAIT_TIME ]; do
+            rs_config=$(mongosh --quiet --eval 'JSON.stringify(rs.conf())' $MONGO_URI 2>/dev/null)
+            if [ $? -eq 0 ] && [ -n "$rs_config" ]; then
+              log_ts "INFO" "Replica set configuration retrieved successfully"
+              break
+            fi
+            
+            log_ts "INFO" "Replica set not configured yet. Waiting ${MONGO_POLL_INTERVAL} seconds..."
+            sleep $MONGO_POLL_INTERVAL
+            rs_config_elapsed=$((rs_config_elapsed + MONGO_POLL_INTERVAL))
+          done
+          
+          if [ -z "$rs_config" ]; then
+            log_ts "ERROR" "Failed to get replica set configuration after ${RS_CONFIG_WAIT_TIME}s"
+            log_ts "ERROR" "MongoDB may not be configured as a replica set yet"
+            log_ts "ERROR" "Job will retry (backoffLimit: 3)"
+            exit 1
+          fi
+
+          # Check if arbiter exists in replica set (idempotency check)
+          arbiter_exists=$(echo "$rs_config" | grep -c "$ARBITER_HOST" || true)
+          
+          if [ "$arbiter_exists" -eq "0" ]; then
+            log_ts "INFO" "Arbiter $ARBITER_HOST is not present in the replica set"
+            log_ts "INFO" "No action needed - arbiter already removed or never existed"
+            log_ts "INFO" "Job is idempotent and completing successfully"
+            echo "====== MongoDB Arbiter Removal Job Finished (No Changes) ======"
+            exit 0
+          fi
+
+          log_ts "INFO" "Arbiter $ARBITER_HOST found in replica set configuration"
+          log_ts "INFO" "Waiting for arbiter to become unhealthy before de-registering..."
+          log_ts "INFO" "Note: Scale down the arbiter deployment manually if not already done"
+
+          # Poll rs.status() every 5 seconds until arbiter is unhealthy
+          MAX_WAIT_TIME=600  # 10 minutes maximum wait time
+          POLL_INTERVAL=5
+          elapsed_time=0
+          arbiter_unhealthy=0
+
+          while [ $elapsed_time -lt $MAX_WAIT_TIME ]; do
+            log_ts "INFO" "Checking arbiter health status... (elapsed: ${elapsed_time}s)"
+            
+            # Get arbiter member data directly using JavaScript in mongosh
+            # This extracts only the arbiter member from rs.status()
+            arbiter_data=$(mongosh --quiet --eval "
+              const status = rs.status();
+              const arbiter = status.members.find(m => m.name === '$ARBITER_HOST');
+              if (arbiter) {
+                print(JSON.stringify({health: arbiter.health, state: arbiter.state, stateStr: arbiter.stateStr}));
+              } else {
+                print(JSON.stringify({health: -1, state: -1, stateStr: 'NOT_FOUND'}));
+              }
+            " $MONGO_URI 2>/dev/null)
+            
+            if [ $? -ne 0 ]; then
+              log_ts "ERROR" "Failed to get replica set status"
+              log_ts "ERROR" "Job will retry (backoffLimit: 3)"
+              exit 1
+            fi
+
+            # Parse the JSON output
+            # MongoDB member states: 0=STARTUP, 1=PRIMARY, 2=SECONDARY, 3=RECOVERING, 6=UNKNOWN, 7=ARBITER, 8=DOWN, 9=ROLLBACK, 10=REMOVED
+            # Health: 1=up, 0=down
+            arbiter_health=$(echo "$arbiter_data" | grep -oP '"health"\s*:\s*\K[0-9]+' || echo "1")
+            arbiter_state=$(echo "$arbiter_data" | grep -oP '"state"\s*:\s*\K[0-9]+' || echo "7")
+            arbiter_state_str=$(echo "$arbiter_data" | grep -oP '"stateStr"\s*:\s*"\K[^"]+' || echo "UNKNOWN")
+            
+            log_ts "INFO" "Arbiter status: health=$arbiter_health, state=$arbiter_state, stateStr=$arbiter_state_str"
+
+            # Check if arbiter is unhealthy (health=0) or in DOWN state (state=8) or UNKNOWN state (state=6)
+            if [ "$arbiter_health" = "0" ] || [ "$arbiter_state" = "8" ] || [ "$arbiter_state" = "6" ] || [ "$arbiter_state_str" = "DOWN" ] || [ "$arbiter_state_str" = "UNKNOWN" ] || [ "$arbiter_state_str" = "(not reachable/healthy)" ]; then
+              log_ts "INFO" "Arbiter is now UNHEALTHY (health=$arbiter_health, state=$arbiter_state_str)"
+              arbiter_unhealthy=1
+              break
+            fi
+
+            log_ts "INFO" "Arbiter is still healthy. Waiting ${POLL_INTERVAL} seconds before next check..."
+            sleep $POLL_INTERVAL
+            elapsed_time=$((elapsed_time + POLL_INTERVAL))
+          done
+
+          if [ $arbiter_unhealthy -eq 0 ]; then
+            log_ts "WARNING" "Timeout reached ($MAX_WAIT_TIME seconds) - arbiter is still showing as healthy"
+            log_ts "WARNING" "Arbiter may not have been scaled down or is still reachable"
+            log_ts "ERROR" "Cannot safely remove arbiter while it's still healthy"
+            log_ts "ERROR" "Please scale down the arbiter deployment and re-run this job"
+            exit 1
+          fi
+
+          log_ts "INFO" "Arbiter is confirmed unhealthy. Proceeding with de-registration..."
+
+          # Remove the arbiter using rs.remove()
+          log_ts "INFO" "Executing: rs.remove('$ARBITER_HOST')"
+          remove_result=$(mongosh --eval "rs.remove('$ARBITER_HOST')" $MONGO_URI 2>&1)
+          remove_status=$?
+          
+          if [ $remove_status -ne 0 ]; then
+            log_ts "ERROR" "Failed to remove arbiter"
+            log_ts "ERROR" "Command output: $remove_result"
+            log_ts "ERROR" "MongoDB reported an error during arbiter removal"
+            log_ts "ERROR" "Job will retry (backoffLimit: 3)"
+            exit 1
+          fi
+
+          log_ts "INFO" "Remove command output: $remove_result"
+          
+          # Verify arbiter removal
+          log_ts "INFO" "Verifying arbiter removal..."
+          sleep 5  # Give MongoDB time to apply the configuration change
+          
+          new_rs_config=$(mongosh --quiet --eval 'JSON.stringify(rs.conf())' $MONGO_URI 2>/dev/null)
+          arbiter_still_exists=$(echo "$new_rs_config" | grep -c "$ARBITER_HOST" || true)
+          
+          if [ "$arbiter_still_exists" -eq "0" ]; then
+            log_ts "INFO" "SUCCESS: Arbiter $ARBITER_HOST successfully removed from replica set"
+            log_ts "INFO" "Replica set configuration updated"
+          else
+            log_ts "WARNING" "Arbiter still appears in configuration after removal attempt"
+            log_ts "WARNING" "This may indicate a delayed configuration update or failure"
+            log_ts "WARNING" "Manual verification recommended"
+          fi
+
+          # Display updated replica set status
+          log_ts "INFO" "Final replica set status:"
+          mongosh --eval 'rs.status()' $MONGO_URI 2>/dev/null | head -20
+          
+          log_ts "INFO" "Arbiter removal process completed at $(date)"
+          echo "====== MongoDB Arbiter Removal Job Finished ======"
+          exit 0
+        env:
+        - name: MONGO_USER
+          valueFrom:
+            secretKeyRef:
+              name: harness-secrets
+              key: mongodbUsername
+        - name: MONGO_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mongodb-replicaset-chart
+              key: mongodb-root-password
+        - name: MONGO_URI
+          value: 'mongodb://$(MONGO_USER):$(MONGO_PASSWORD)@{{ .Values.mongodb.fullnameOverride }}-0.{{ .Values.mongodb.fullnameOverride }}/?authSource=admin'
+        {{- with .Values.mongodbupgrades.removeArbiter.resources }}
+        resources: {{- toYaml . | nindent 10 }}
+        {{- end }}
+      restartPolicy: Never
+  backoffLimit: 3
+{{- end }}

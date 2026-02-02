@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "code-githa.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.additionalConfig "context" $) | nindent 2}}
+  GITHA_DATABASE_DRIVER: {{ .Values.config.CODE_GITHA_DATABASE_DRIVER | quote }}
+  GITHA_NODES_CONFIG_PATH: {{ .Values.config.CODE_GITHA_NODES_CONFIG_PATH | quote }}
+  GITHA_GRPC_SERVER_PORT: {{ .Values.config.CODE_GITHA_GRPC_SERVER_PORT | quote }}
+  GITHA_HTTP_SERVER_PORT: {{ .Values.config.CODE_GITHA_HTTP_SERVER_PORT | quote }}
+  GITHA_LOCK_PROVIDER: {{ .Values.config.CODE_GITHA_LOCK_PROVIDER | quote }}
+  GITHA_PUBSUB_PROVIDER: {{ .Values.config.CODE_GITHA_PUBSUB_PROVIDER | quote }}
+  GITHA_PUBSUB_APP_NAMESPACE : {{ .Values.config.CODE_GITHA_PUBSUB_APP_NAMESPACE | quote }}
+
+  GITHA_REDIS_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote }}
+  GITHA_REDIS_SENTINEL_MASTER: harness-redis
+  GITHA_REDIS_SENTINEL_ENDPOINT: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "code-githa" "unsetProtocol" true) }}
+  GITHA_REDIS_ENDPOINT: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "code-githa" "unsetProtocol" true) }}
+
+  GITHA_TRACE:  {{ .Values.config.CODE_TRACE | quote }}
+  GITHA_DEBUG:  {{ .Values.config.CODE_DEBUG | quote }}
+  
+  GITHA_TIMEOUT_OPERATION_WRITE: {{ .Values.config.CODE_GITHA_TIMEOUT_OPERATION_WRITE | quote }}
+
+  # load balance requests among grpc servers
+  GITHA_GRPC_SERVER_MAX_CONN_AGE: {{ .Values.config.CODE_GITHA_GRPC_SERVER_MAX_CONN_AGE | quote }}
+  GITHA_GRPC_SERVER_MAX_CONN_AGE_GRACE: {{ .Values.config.CODE_GITHA_GRPC_SERVER_MAX_CONN_AGE_GRACE | quote }}
+
+  GITHA_GRACEFUL_SHUTDOWN_TIME: {{ int .Values.config.CODE_SERVER_GRACEFUL_SHUTDOWN_TIME | printf "%ds" | quote }}
+
+  GITHA_DISTRIBUTION_DEFAULT_REPLICATION_FACTOR: {{ .Values.distribution.CODE_GITHA_DISTRIBUTION_DEFAULT_REPLICATION_FACTOR | quote }}
+  GITHA_DISTRIBUTION_NODE_SELECTION_STRATEGY: {{ .Values.distribution.CODE_GITHA_DISTRIBUTION_NODE_SELECTION_STRATEGY | quote }}

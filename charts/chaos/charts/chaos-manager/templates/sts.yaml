@@ -1,0 +1,126 @@
+{{- if .Values.deployAsSts }}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: chaos-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    component: chaos-manager
+    app: chaos-manager
+    {{- include "chaos-manager.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations:
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.replicaCountSts }}
+  serviceName: chaos-manager-service
+  selector:
+    matchLabels:
+      component: chaos-manager
+      app: chaos-manager
+      {{- include "chaos-manager.selectorLabels" . | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: chaos-manager-hub-storage
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+  template:
+    metadata:
+      labels:
+      {{- if or .Values.podAnnotations .Values.global.commonAnnotations }}
+      annotations:
+        {{- if .Values.podAnnotations }}
+          {{- toYaml .Values.podAnnotations | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        component: chaos-manager
+        app: chaos-manager
+        {{- include "chaos-manager.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+
+    spec:
+      {{ include "chaos-manager.pullSecrets" . | nindent 6 }}
+      securityContext:
+        fsGroup: 2000
+      serviceAccountName: {{ include "chaos-manager.serviceAccountName" . }}
+      initContainers:
+      {{- if .Values.global.database.mongo.installed }}
+        {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-mongo" "appName" "mongodb-replicaset") | nindent 8}}
+      {{- end }}
+      containers:
+        - name: chaos-manager
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            #- name: service-account
+            #  mountPath: /opt/harness/svc
+            - mountPath: "/data/chaos_hubs"
+              name: chaos-manager-hub-storage
+          envFrom:
+            - configMapRef:
+                name: chaos-manager-config
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "REDIS_LOCK_PASSWORD" "defaultKubernetesSecretName" "chaos-manager" "defaultKubernetesSecretKey" "REDIS_LOCK_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "REDIS_PASSWORD" "defaultKubernetesSecretName" "chaos-manager" "defaultKubernetesSecretKey" "REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.secrets.manageAppEnv" (dict "ctx" $ "variableName" "REDIS_CACHE_PASSWORD" "defaultKubernetesSecretName" "chaos-manager" "defaultKubernetesSecretKey" "REDIS_CACHE_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database"  "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD" "connectionURIVariableName" "DB_SERVER") | indent 12 }}
+            - name: LOG_SERVICE_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: chaos-common-config
+                  key: LOG_SERVICE_ENDPOINT
+            - name: INFRA_COMPATIBLE_VERSIONS
+              valueFrom:
+                configMapKeyRef:
+                  name: chaos-common-config
+                  key: INFRA_COMPATIBLE_VERSIONS
+          ports:
+            - containerPort: {{.Values.service.port}}
+            - containerPort: {{.Values.service.grpcport}}
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - "ls server"
+            initialDelaySeconds: 1
+            periodSeconds: 5
+          readinessProbe:
+            httpGet:
+              scheme: HTTP
+              path: /status
+              port: {{.Values.service.port}}
+            initialDelaySeconds: 1
+            periodSeconds: 5
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- end }}

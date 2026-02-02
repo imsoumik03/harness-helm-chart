@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name:  {{ include "code-gitrpc.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "code-gitrpc.labels" . | nindent 4}}
+spec:
+  clusterIP: None
+  ports:
+  - name: code-gitrpc
+    protocol: TCP
+    port: {{ .Values.config.CODE_GITRPC_SERVER_PORT }}
+    targetPort: {{ .Values.config.CODE_GITRPC_SERVER_PORT }}
+  - name: code-http
+    protocol: TCP
+    port: {{ .Values.config.CODE_GITRPC_SERVER_HTTP_PORT }}
+    targetPort: {{ .Values.config.CODE_GITRPC_SERVER_HTTP_PORT }}
+  selector:
+    app:  {{ include "code-gitrpc.name" . }}

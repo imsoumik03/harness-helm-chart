@@ -1,0 +1,10 @@
+{{- if and .Values.nginx.create .Values.nginx.clusterRole.create -}}
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  annotations:
+  labels:
+  name: {{ default .Values.global.ingress.className .Values.nginx.controller.className }}
+spec:
+  controller: k8s.io/harness-ingress-controller
+{{- end -}}

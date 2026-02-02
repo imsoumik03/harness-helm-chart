@@ -1,0 +1,6 @@
+{{ include "harnesscommon.monitoring.podMonitor" (dict "name" "pipeline-service" "ctx" $ "label" "app.kubernetes.io/name") }}
+---
+# PodMonitor for orchestration-engine worker service
+{{- if .Values.pipelineSplitting.enabled }}
+{{ include "harnesscommon.monitoring.podMonitor" (dict "name" "orchestration-engine" "ctx" $ "label" "app.kubernetes.io/name" "podMonitorName" "orchestration-engine") }}
+{{- end }}

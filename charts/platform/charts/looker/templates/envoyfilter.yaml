@@ -1,0 +1,43 @@
+{{- if .Values.global.istio.enabled }}
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: looker
+  namespace: {{ .Release.Namespace }}
+spec:
+  workloadSelector:
+    labels:
+      envoy-rewrite: looker
+  configPatches:
+    - applyTo: HTTP_FILTER
+      match:
+        # context omitted so that this applies to both sidecars and gateways
+        listener:
+          filterChain:
+            filter:
+              name: "envoy.filters.network.http_connection_manager"
+              subFilter:
+                name: "envoy.filters.http.router"
+      patch:
+        operation: INSERT_BEFORE
+        value: # lua filter specification
+          name: envoy.lua
+          typed_config:
+            "@type": "type.googleapis.com/envoy.extensions.filters.http.lua.v3.Lua"
+            inlineCode: |
+              function envoy_on_response(response_handle)
+                if (response_handle == nil) then
+                  return
+                end
+                if (response_handle:headers() == nil) then
+                  return
+                end
+
+                local val = response_handle:headers():get("location")
+                if (val == nil) then
+                  return
+                end
+                local res = string.gsub(val, "^(http://)(.*)", "https://%2")
+                response_handle:headers():replace("location", res)
+              end
+{{ end }}

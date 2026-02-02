@@ -1,0 +1,176 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ng-custom-dashboards.name" . }}
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{- include "ng-custom-dashboards.labels" . | nindent 4 }}
+     {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ng-custom-dashboards.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+      {{- end }}
+      labels:
+        app: dashboard
+        {{- include "ng-custom-dashboards.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "ng-custom-dashboards.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ng-custom-dashboards.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        {{- include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 8 }}
+      containers:
+        - name: {{ include "ng-custom-dashboards.name" . }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+          command: {{- include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 12 }}
+          args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "gunicorn app:application" "secrets_loader_cmd" "true") | nindent 12 }}
+          {{- end }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+              {{- toYaml .Values.securityContext | nindent 12 }}
+          ports:
+          - name: http
+            containerPort: {{.Values.service.port}}
+            protocol: "TCP"
+          resources:
+              {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+            {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cache" "userVariableName" "REDIS_USERNAME" "passwordVariableName" "REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12 }}
+            {{- end }}
+          envFrom:
+          - configMapRef:
+              name: {{ include "ng-custom-dashboards.name" . }}
+          startupProbe:
+            httpGet:
+              path: /dashboard/health
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /dashboard/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /dashboard/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 5
+          {{- if .Values.lifecycleHooks }}
+          lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+          {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 12 }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+        {{- if .Values.global.monitoring.enabled }}
+        - name: {{ include "ng-custom-dashboards.name" . }}-statsd-exporter
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.statsd.image "global" .Values.global) }}
+          args:
+            - --statsd.mapping-config=/statsd/statsd_mapping.yml
+          ports:
+          - name: http
+            containerPort: 9102
+            protocol: "TCP"
+          startupProbe:
+            httpGet:
+              path: /metrics
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+          readinessProbe: # traffic
+            httpGet:
+              path: /metrics
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 1
+          livenessProbe: # restart
+            httpGet:
+              path: /metrics
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 15
+            failureThreshold: 5
+          volumeMounts:
+            - name: statsd-mapping
+              mountPath: /statsd/statsd_mapping.yml
+              subPath: statsd_mapping.yml
+        {{- end }}
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ include "ng-custom-dashboards.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 8 }}
+      {{- if .Values.global.monitoring.enabled }}
+        - name: statsd-mapping
+          configMap:
+            defaultMode: 420
+            name: {{ include "ng-custom-dashboards.name" . }}-statsd-exporter
+            items:
+            - key: statsd_mapping.yml
+              path: statsd_mapping.yml
+      {{- end }}
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+      {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+      {{- end }}

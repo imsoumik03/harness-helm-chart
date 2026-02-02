@@ -1,0 +1,10 @@
+apiVersion: v2
+appVersion: 1.12.1
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.x.x
+description: A Helm chart for Kubernetes
+name: template-service
+type: application
+version: 1.128.0

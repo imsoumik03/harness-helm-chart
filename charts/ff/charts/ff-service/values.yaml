@@ -1,0 +1,320 @@
+global:
+  autoscaling:
+    enabled: false
+  cfPostgresEnabled: false
+  commonAnnotations: {}
+  commonLabels: {}
+  loadbalancerURL: "https://test"
+  monitoring:
+    enabled: false
+    managedPlatform: google
+    path: /metrics
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: IfNotPresent
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+  delegate:
+    airgapped: false
+  imagePullSecrets: []
+  istio:
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+      - '*'
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts:
+        - ''
+      gateways: []
+  ingress:
+    enabled: false
+    objects:
+      annotations: {}
+    hosts:
+      - 'my-host.example.org'
+    tls:
+      enabled: false
+      secretName: harness-cert
+  stackDriverLoggingEnabled: false
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      sslMode: disable
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+      sslMode: disable
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cf:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    cfevents:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  opa:
+    enabled: false
+ff-admin-server:
+  image:
+    tag: "1.1145.0"
+    pullPolicy: Always
+    registry: docker.io
+    repository: harness/ff-service-signed
+  service:
+    grpcEnabled: false
+  resources:
+    requests:
+      memory: 500M
+      cpu: 100m
+      ephemeral-storage: 250M
+    limits:
+      memory: 500M
+      ephemeral-storage: 250M
+  config:
+    ADMIN_ENABLE: "true"
+  job:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/ff-cron-signed
+      tag: 1.1145.0
+ff-client-server:
+  image:
+    tag: "1.1145.0"
+    pullPolicy: Always
+    registry: docker.io
+    repository: harness/ff-service-signed
+  resources:
+    requests:
+      memory: 400M
+      cpu: 300m
+      ephemeral-storage: 250M
+    limits:
+      memory: 400M
+      ephemeral-storage: 250M
+  config:
+    CLIENT_ENABLE: "true"
+ff-metrics-server:
+  image:
+    tag: "1.1145.0"
+    pullPolicy: Always
+    registry: docker.io
+    repository: harness/ff-service-signed
+  resources:
+    requests:
+      memory: 250M
+      cpu: 250m
+      ephemeral-storage: 250M
+    limits:
+      memory: 250M
+      ephemeral-storage: 250M
+  config:
+    METRICS_ENABLE: "true"
+    METRICS_PROCESSING: "true"
+ff-psql-migrations:
+  image:
+    tag: "1.1145.0"
+    pullPolicy: Always
+    registry: docker.io
+    repository: harness/ff-server-primary-db-migration-signed
+ff-timescale-migrations:
+  image:
+    tag: "1.1145.0"
+    pullPolicy: Always
+    registry: docker.io
+    repository: harness/ff-server-analytics-db-migration-signed
+  isPostgresDB: false
+service:
+  type: ClusterIP
+  port: 80
+ingress:
+  annotations: {}
+  className: nginx
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+        nginx.ingress.kubernetes.io/rewrite-target: /api/1.0/$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/cf(/|$)(.*)'
+          pathType: Prefix
+          backend:
+            service:
+              name: ff-admin-server
+        - path: '{{ .Values.global.ingress.pathPrefix }}/sdk/api/1.0(/|$)(auth.*)'
+          pathType: Prefix
+          backend:
+            service:
+              name: ff-client-server
+        - path: '{{ .Values.global.ingress.pathPrefix }}/sdk/api/1.0(/|$)(client.*)'
+          pathType: Prefix
+          backend:
+            service:
+              name: ff-client-server
+        - path: '{{ .Values.global.ingress.pathPrefix }}/sdk/api/1.0(/|$)(proxy.*)'
+          pathType: Prefix
+          backend:
+            service:
+              name: ff-client-server
+        - path: '{{ .Values.global.ingress.pathPrefix }}/events(/|$)(.*)'
+          pathType: Prefix
+          backend:
+            service:
+              name: ff-metrics-server
+virtualService:
+  annotations: {}
+  objects:
+    - pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/cf'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/events'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/sdk/api/1.0/auth'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/sdk/api/1.0/client'

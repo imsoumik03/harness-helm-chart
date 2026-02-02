@@ -1,0 +1,396 @@
+# Default values for batch-processing
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  storageClass: ""
+  pdb:
+    create: false
+  commonAnnotations: {}
+  commonLabels: {}
+  loadbalancerURL: "https://test"
+  monitoring:
+    enabled: false
+    port: 8889
+    managedPlatform: ""
+    path: /metrics
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "1.5.0"
+      digest: ""
+      imagePullSecrets: []
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - database name used to connect to a specific Postgres database
+      databaseName: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      ## - SSL configuration
+      sslMode: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - dummy.net
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      certName: ""
+      certKey: ""
+      # -- Enable TimescaleDB SSL
+      sslEnabled: false
+      # -- TimescaleDB secrets
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+  imagePullSecrets: []
+replicaCount: 1
+isolatedReplica: 0
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+secondaryTimescaledb:
+  # -- TimescaleDB host names
+  hosts:
+    - timescaledb-single-chart-replica:5432
+  protocol: "jdbc:postgresql"
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+image:
+  registry: docker.io
+  repository: harness/tsdb-to-psql-migrator-signed
+  tag: 1.0.0-soumik-migration-5-19f825
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  digest: ""
+  # image pull secrets to use for batch-processing image
+  imagePullSecrets: []
+timescaleSecret:
+  password:
+    name: harness-secrets
+    key: timescaledbPostgresPassword
+smtp:
+  host: ""
+  password: ""
+  user: ""
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  create: true
+  annotations: {}
+  name: "tsdb-to-psql-migrator"
+podAnnotations: {}
+# Pod-level security context - sets ownership for mounted volumes
+# fsGroup: 1000 ensures PVC is writable by user 1000
+podSecurityContext:
+  fsGroup: 1000 # Sets group ownership of mounted volumes
+  runAsUser: 1000 # Run pod as user 1000 (non-root)
+  runAsGroup: 1000 # Run pod as group 1000
+  fsGroupChangePolicy: "OnRootMismatch" # Only change permissions when needed (performance)
+# Container-level security context
+securityContext:
+  allowPrivilegeEscalation: false # Prevent privilege escalation
+  runAsNonRoot: true # Force non-root execution
+  runAsUser: 1000 # Run as user 1000 (matches migration user in Dockerfile)
+  capabilities:
+    drop:
+      - ALL # Drop all capabilities for security
+nodeSelector: {}
+tolerations: []
+affinity: {}
+resources:
+  limits:
+    memory: "1536Mi"
+  requests:
+    cpu: 1
+    memory: "512Mi"
+additionalConfigs: {}
+postgres:
+  ## - protocol to use for connection
+  enabled: false
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+# application level secrets
+terminationGracePeriodSeconds: 30
+secrets:
+  fileSecret: []
+  conditions: {}
+  default: {}
+  kubernetesSecrets: []
+  secretManagement:
+    externalSecretsOperator: []
+config: {}
+extraEnvVars:
+  - name: MIGRATION_ENABLED
+    value: "false"
+  - name: MAX_PARALLEL_JOBS
+    value: "8"
+  - name: RESTORE_PARALLEL_WORKERS
+    value: "8"
+  - name: DUMP_COMPRESSION_LEVEL
+    value: "7"
+  - name: MAX_RETRIES
+    value: "3"
+  - name: RETRY_DELAY_SECONDS
+    value: "30"
+  - name: SKIP_SCHEMA_EXTRACT
+    value: "false"
+  - name: SKIP_FUNCTION_RECREATION
+    value: "false"
+  - name: SKIP_HYPERTABLE_RECREATION
+    value: "false"
+  - name: SKIP_CRONJOB_CREATION
+    value: "false"
+  - name: SKIP_DUMP
+    value: "false"
+  - name: SKIP_RESTORE
+    value: "false"
+  - name: SKIP_HYPER_TABLE_MIGRATION
+    value: "false"
+  - name: SKIP_VALIDATION
+    value: "false"
+  - name: SKIP_ENDPOINT_UPDATE
+    value: "false"
+  - name: SKIP_INCREMENTAL_SYNC
+    value: "false"
+  - name: SKIP_CUTOVER_FULL_COPY
+    value: "false"
+  - name: TSDB_SCALE_DOWN
+    value: "false"
+  - name: MIGRATOR_SCALE_DOWN
+    value: "false"
+rbac:
+  rules: []
+pdb:
+  create: false
+persistence:
+  ## @param persistence.enabled Enable MongoDB(&reg;) data persistence using PVC
+  ##
+  enabled: true
+  ## @param persistence.name Name of the PVC and mounted volume
+  ##
+  name: "datadir"
+  ## @param persistence.medium Provide a medium for `emptyDir` volumes.
+  ## Requires persistence.enabled: false
+  ##
+  medium: ""
+  ## @param persistence.existingClaim Provide an existing `PersistentVolumeClaim` (only when `architecture=standalone`)
+  ## Requires persistence.enabled: true
+  ## If defined, PVC must be created manually before volume will be bound
+  ## Ignored when mongodb.architecture=replicaset
+  ##
+  existingClaim: ""
+  ## @param persistence.resourcePolicy Setting it to "keep" to avoid removing PVCs during a helm delete operation. Leaving it empty will delete PVCs after the chart deleted
+  ##
+  resourcePolicy: ""
+  ## @param persistence.storageClass PVC Storage Class for MongoDB(&reg;) data volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ## set, choosing the default provisioner.
+  ##
+  storageClass: "standard-rwo"
+  ## @param persistence.accessModes PV Access Mode
+  ##
+  accessModes:
+    - ReadWriteOnce
+  ## @param persistence.size PVC Storage Request for MongoDB(&reg;) data volume
+  ##
+  size: 20Gi
+  ## @param persistence.annotations PVC annotations
+  ##
+  annotations: {}
+  ## @param persistence.labels PVC labels
+  ##
+  labels: {}
+  ## @param persistence.mountPath Path to mount the volume at
+  ## MongoDB(&reg;) images.
+  ##
+  mountPath: /migration-data
+  ## @param persistence.subPath Subdirectory of the volume to mount at
+  ## and one PV for multiple services.
+  ##
+  subPath: ""
+  ## Fine tuning for volumeClaimTemplates
+  ##
+  volumeClaimTemplates:
+    ## @param persistence.volumeClaimTemplates.selector A label query over volumes to consider for binding (e.g. when using local volumes)
+    ## A label query over volumes to consider for binding (e.g. when using local volumes)
+    ## See https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.20/#labelselector-v1-meta for more details
+    ##
+    selector: {}
+    ## @param persistence.volumeClaimTemplates.requests Custom PVC requests attributes
+    ## Sometime cloud providers use additional requests attributes to provision custom storage instance
+    ## See https://cloud.ibm.com/docs/containers?topic=containers-file_storage#file_dynamic_statefulset
+    ##
+    requests: {}
+    ## @param persistence.volumeClaimTemplates.dataSource Add dataSource to the VolumeClaimTemplate
+    ##
+    dataSource: {}

@@ -1,0 +1,562 @@
+# Default values for gitops.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+global:
+  logLevel: debug
+  autoscaling:
+    enabled: false
+  fips: false
+  pdb:
+    create: false
+  loadbalancerURL: ""
+  loadbalancerContext: ""
+  commonAnnotations: {}
+  commonLabels: {}
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      protocol: mongodb+srv
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      sslEnabled: false
+      certName: ""
+      certKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    enabled: false
+    hosts:
+      - 'my-host.example.org'
+    tls:
+      enabled: false
+      secretName: harness-ssl
+    objects:
+      annotations: {}
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    virtualService:
+      gateways:
+      hosts:
+  internalIngress:
+    enabled: false
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+monitoring:
+  path: /gitops/metrics
+  port: 6565
+progressDeadlineSeconds: 600
+probes:
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: 7908
+    initialDelaySeconds: 3
+    periodSeconds: 30
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /healthz
+      port: 7908
+    initialDelaySeconds: 3
+    periodSeconds: 30
+    failureThreshold: 3
+terminationMessage: {}
+image:
+  registry: docker.io
+  repository: harness/gitops-service-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.47.3"
+  digest: ""
+  imagePullSecrets: []
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext: {}
+# capabilities:
+#   drop:
+#   - ALL
+# readOnlyRootFilesystem: true
+# runAsNonRoot: true
+# runAsUser: 1000
+
+service:
+  annotations: {}
+  type: ClusterIP
+  httpServerPort: 7908
+  grpcServerPort: 7909
+  port: 80
+  httpBind: ":7908"
+virtualService:
+  annotations: {}
+  objects:
+    - name: harness-gitops
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/gitops/'
+          backend:
+            service:
+              port: 7908
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  limits:
+    memory: 256Mi
+  requests:
+    cpu: 2
+    memory: 256Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+ingress:
+  objects:
+    - name: gitops-http
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/gitops(/|$)(.*)'
+          backend:
+            service:
+              port: 7908
+upgraderImage:
+  image:
+    registry: docker.io
+    repository: harness/upgrader
+    pullPolicy: Always
+    tag: "latest"
+    digest: ""
+    imagePullSecrets: []
+agentDockerImage:
+  image:
+    registry: docker.io
+    repository: harness/gitops-agent
+    pullPolicy: Always
+    tag: "v0.106.0"
+    digest: ""
+    imagePullSecrets: []
+redisHaConfigMapTestJob:
+  image:
+    registry: docker.io
+    repository: koalaman/shellcheck
+    pullPolicy: IfNotPresent
+    tag: "v0.5.0"
+    digest: ""
+    imagePullSecrets: []
+  resources: {}
+argoCDImage:
+  image:
+    registry: docker.io
+    repository: harness/argocd
+    pullPolicy: IfNotPresent
+    tag: "v3.1.8"
+    digest: ""
+    imagePullSecrets: []
+agentHAProxyImage:
+  image:
+    registry: docker.io
+    repository: haproxy
+    pullPolicy: IfNotPresent
+    tag: "lts-alpine3.22"
+    digest: ""
+    imagePullSecrets: []
+agentRedisImage:
+  image:
+    registry: docker.io
+    repository: harness/redis
+    pullPolicy: IfNotPresent
+    tag: "7.4.7-alpine"
+    digest: ""
+    imagePullSecrets: []
+sopsInstallerImage:
+  image:
+    registry: docker.io
+    repository: harness/gitops-agent-installer-helper
+    pullPolicy: IfNotPresent
+    tag: "v0.0.8"
+    digest: ""
+    imagePullSecrets: []
+accessControlService:
+  basePath: "api/"
+  host: "access-control:9006"
+  skipSecureVerify: "true"
+  defaultSchemes: "http"
+agent:
+  protocol: "HTTP1"
+  versionFileLocation: "/app/VERSIONS/AGENT"
+  dockerImageRepo: "harness/gitops-agent"
+  minimumV2Version: "0.33.0"
+  enableAuth: "true"
+  tlsEnabled: "false"
+  customImage: "true"
+certPath: ""
+enableCDN: "false"
+eventsFrameworkEnvNamespace: "free"
+gitopsHttpAcme: "false"
+gitopsTaskLongPolling: "true"
+grpcPort: 7909
+keyPath: ""
+logFormat: ""
+metricsPort: 6565
+appSyncCompressJobEnabled: "false"
+streamTimeout: 3600s
+disableTransactionInReconcile: "true"
+disableTransactionInCascadeDelete: "true"
+applicationStreamEnabled: "false"
+timescale:
+  certPath: ""
+  dbName: "harness_gitops"
+  logLevel: 3
+  useTls: "false"
+  password:
+    name: harness-secrets
+    key: timescaledbPostgresPassword
+# this is config for harness ng-manager
+platformService:
+  url: "http://ng-manager:7090"
+  skipSecureVerify: "true"
+managerService:
+  url: "http://harness-manager:9090/api"
+  skipSecureVerify: "true"
+#  this is config for harness platform-service
+platformSvc:
+  url: "http://platform-service:9005/api"
+  skipSecureVerify: "true"
+  auditsApiPath: "audit/api"
+versionFileLocation: "/app/VERSIONS/SERVER"
+timescaledb:
+  # -- TimescaleDB host names
+  hosts: []
+  # -- Enable TimescaleDB SSL
+  # sslEnabled: false
+  # -- TimescaleDB secrets
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          TIMESCALEDB_USERNAME: ""
+          TIMESCALEDB_PASSWORD: ""
+          TIMESCALEDB_SSL_ROOT_CERT: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            TIMESCALEDB_USERNAME:
+              name: ""
+              property: ""
+            TIMESCALEDB_PASSWORD:
+              name: ""
+              property: ""
+            TIMESCALEDB_SSL_ROOT_CERT:
+              name: ""
+              property: ""
+mongo:
+  enableReflection: "true"
+  dbName: "harness-gitops"
+  dropAllIndexesOnce: "false"
+database:
+  mongo:
+    harnessgitops:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      masterName: "harness-redis"
+      password:
+        name: harness-secrets
+        key: redisPassword
+      sslCAPath: ""
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      sslEnabled: "false"
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+secrets:
+  default:
+    ACL_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    JWT_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    MANAGER_JWT_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    PLATFORM_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    PLATFORMSERVICE_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        ACL_SECRET: ""
+        IDENTITY_SERVICE_SECRET: ""
+        JWT_SECRET: ""
+        PLATFORM_AUTH_SECRET: ""
+        MANAGER_JWT_AUTH_SECRET: ""
+        PLATFORMSERVICE_AUTH_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          ACL_SECRET:
+            name: ""
+            property: ""
+          IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+          JWT_SECRET:
+            name: ""
+            property: ""
+          PLATFORM_AUTH_SECRET:
+            name: ""
+            property: ""
+          MANAGER_JWT_AUTH_SECRET:
+            name: ""
+            property: ""
+          PLATFORMSERVICE_AUTH_SECRET:
+            name: ""
+            property: ""
+config:
+  REDIS_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  REDIS_MASTER_NAME: '{{ .Values.database.redis.events.masterName }}'
+  ACCESS_CONTROL_SERVICE_BASEPATH: '{{.Values.accessControlService.basePath }}'
+  ACCESS_CONTROL_SERVICE_HOST: '{{ .Values.accessControlService.host }}'
+  ACCESS_CONTROL_SERVICE_SKIPSECUREVERIFY: '{{ .Values.accessControlService.skipSecureVerify }}'
+  ACCESS_CONTROL_DEFAULT_SCHEMES: '{{ .Values.accessControlService.defaultSchemes }}'
+  AGENT_DOCKER_IMAGE_REPO: '{{include "common.images.image" (dict "imageRoot" .Values.agentDockerImage.image "global" .Values.global) }}'
+  AGENT_REDIS_HA_CONFIG_TEST_IMAGE: '{{include "common.images.image" (dict "imageRoot" .Values.redisHaConfigMapTestJob.image "global" .Values.global) }}'
+  AGENT_CUSTOM_IMAGE_TAG: '{{ .Values.agent.customImage }}'
+  AGENT_ENABLE_AUTH: '{{ .Values.agent.enableAuth }}'
+  AGENT_HTTP_TARGET: '{{ .Values.global.loadbalancerURL }}/gitops'
+  AGENT_PROTOCOL: '{{ .Values.agent.protocol }}'
+  AGENT_ARGO_CD_IMAGE_REPO: '{{include "common.images.image" (dict "imageRoot" .Values.argoCDImage.image "global" .Values.global) }}'
+  AGENT_HA_PROXY_IMAGE_REPO: '{{include "common.images.image" (dict "imageRoot" .Values.agentHAProxyImage.image "global" .Values.global) }}'
+  AGENT_REDIS_IMAGE_REPO: '{{include "common.images.image" (dict "imageRoot" .Values.agentRedisImage.image "global" .Values.global) }}'
+  AGENT_HTTP_TLS_ENABLED: '{{ .Values.agent.tlsEnabled }}'
+  GITOPS_SERVICE_HTTP_BIND: '{{ .Values.service.httpBind }}'
+  GITOPS_SERVICE_HTTP_HOST: '{{ .Values.global.loadbalancerURL }}{{ .Values.global.loadbalancerContext }}/gitops'
+  AGENT_GRPC_TARGET: '{{ .Values.global.loadbalancerURL }}:443'
+  DROP_ALL_INDEXES_ONCE: '{{ .Values.mongo.dropAllIndexesOnce }}'
+  ENABLE_CDN: '{{ .Values.enableCDN }}'
+  GITOPS_AGENT_VERSION_FILE_LOCATION: '{{ .Values.agent.versionFileLocation }}'
+  GITOPS_AGENT_UPGRADER_IMAGE: '{{include "common.images.image" (dict "imageRoot" .Values.upgraderImage.image "global" .Values.global) }}'
+  GITOPS_LOG_FORMAT: '{{ .Values.logFormat }}'
+  GITOPS_MINIMUM_AGENT_VERSION_V2: '{{ .Values.agent.minimumV2Version }}'
+  GITOPS_SERVICE_CERT_PATH: '{{ .Values.certPath }}'
+  GITOPS_SERVICE_GRPC_PORT: '{{ .Values.grpcPort }}'
+  GITOPS_SERVICE_HTTP_ACME: '{{ .Values.gitopsHttpAcme }}'
+  GITOPS_SERVICE_KEY_PATH: '{{ .Values.keyPath }}'
+  GITOPS_SERVICE_METRICS_PORT: '{{ .Values.metricsPort }}'
+  GITOPS_SERVICE_MONGODB_DB_NAME: '{{ .Values.mongo.dbName }}'
+  GITOPS_SERVICE_MONGODB_ENABLE_REFLECTION: '{{ .Values.mongo.enableReflection }}'
+  GITOPS_SERVICE_TASK_LONG_POLLING: '{{ .Values.gitopsTaskLongPolling }}'
+  GITOPS_SERVICE_TIMESCALE_DB_NAME: '{{ .Values.timescale.dbName }}'
+  GITOPS_SERVICE_TIMESCALE_LOG_LEVEL: '{{ .Values.timescale.logLevel }}'
+  GITOPS_SERVICE_VERSION_FILE_LOCATION: '{{ .Values.versionFileLocation }}'
+  MANAGER_URL: '{{ .Values.managerService.url }}'
+  PLATFORM_SERVICE_URL: '{{ .Values.platformService.url }}'
+  PLATFORM_SERVICE_SKIPSECUREVERIFY: '{{ .Values.platformService.skipSecureVerify }}'
+  PLATFORMSERVICE_HOST: '{{ .Values.platformSvc.url }}'
+  PLATFORMSERVICE_SKIPSECUREVERIFY: '{{ .Values.platformSvc.skipSecureVerify }}'
+  PLATFORMSERVICE_AUDITS_API_PATH: '{{ .Values.platformSvc.auditsApiPath }}'
+  SOPS_INSTALLER_IMAGE: '{{ include "common.images.image" (dict "imageRoot" .Values.sopsInstallerImage.image "global" .Values.global) }}'
+  GITOPS_LONG_RECONCILER_EVENT_THRESHOLD_ACC_LIST: '{{ .Values.featureFlag.GitOpsLongReconcilerEventThresholdAccountList}}'
+  APP_SYNC_COMPRESS_JOB_ENABLED: '{{ .Values.appSyncCompressJobEnabled }}'
+  GITOPS_SERVICE_STREAM_TIMEOUT: '{{ .Values.streamTimeout }}'
+  GITOPS_DISABLE_TRANSACTION_IN_RECONCILE: '{{ .Values.disableTransactionInReconcile }}'
+  GITOPS_DISABLE_TRANSACTION_IN_CASCADE_DELETE: '{{ .Values.disableTransactionInCascadeDelete }}'
+  GITOPS_APPLICATION_STREAM_ENABLED: '{{ .Values.applicationStreamEnabled }}'
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  LOG_LEVEL: '{{ .Values.global.logLevel }}'
+featureFlag:
+  GitOpsLongReconcilerEventThresholdAccountList: []
+rbac:
+  rules: []
+pdb:
+  create: false

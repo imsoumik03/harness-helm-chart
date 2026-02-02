@@ -1,0 +1,313 @@
+# Default values for log-service
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  fips: false
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  ingress:
+    enabled: false
+    className: harness
+    hosts:
+      - my-host.example.org
+    tls:
+      enabled: true
+      secretName: ''
+    objects:
+      annotations: {}
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    virtualService:
+      gateways: []
+      hosts: []
+  imagePullSecrets: []
+  database:
+    minio:
+      installed: true
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              S3_USER: ""
+              S3_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                S3_USER:
+                  name: ""
+                  property: ""
+                S3_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts: []
+      secretName: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+monitoring:
+  port: 8889
+  path: /metrics
+progressDeadlineSeconds: 600
+terminationGracePeriodSeconds: 180
+probes:
+  livenessProbe:
+    httpGet:
+      path: /healthz
+      port: http-log-svc
+      scheme: HTTP
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 5
+    timeoutSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /ready/healthz
+      port: http-log-svc
+      scheme: HTTP
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 5
+    timeoutSeconds: 10
+terminationMessage: {}
+database:
+  redis:
+    logservice:
+      enabled: false
+      # -- enabledByDefault was included due to an issue with "enabled" flag.
+      enabledByDefault: true
+      protocol: ""
+      # --  provide default values if redis.installed is set to false
+      hosts: []
+      secretName: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+#  disableWatcher: false
+replicaCount: 1
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+podLabels: {}
+image:
+  registry: docker.io
+  repository: harness/log-service-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.36.2"
+  digest: ""
+  imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+imagePullSecrets: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+resources:
+  limits:
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+# -- PDB creation is controlled by autoscaling.enabled: true
+pdb:
+  create: false
+service:
+  type: ClusterIP
+  port: 8079
+  annotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+additionalConfigs: {}
+# extraVolumes:
+# - name: volume-test
+#   configMap:
+#     name: test-config
+#     readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: test-volume-mount
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+endpoint: ""
+virtualService:
+  annotations: {}
+  objects:
+    - name: log-service
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/log-service/'
+ingress:
+  annotations: {}
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/log-service(/|$)(.*)'
+secrets:
+  default:
+    LOG_SERVICE_GLOBAL_TOKEN: c76e567a-b341-404d-a8dd-d9738714eb82
+    LOG_SERVICE_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        LOG_SERVICE_GLOBAL_TOKEN: ""
+        LOG_SERVICE_SECRET: ""
+    - secretName: "minio"
+      keys:
+        LOG_SERVICE_S3_ACCESS_KEY_ID: "root-user"
+        LOG_SERVICE_S3_SECRET_ACCESS_KEY: "root-password"
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          LOG_SERVICE_GLOBAL_TOKEN:
+            name: ""
+            property: ""
+          LOG_SERVICE_SECRET:
+            name: ""
+            property: ""
+config:
+  LOG_SERVICE_S3_PATH_STYLE: "true"
+  LOG_SERVICE_GCS_PATH_STYLE: "true"
+  LOG_SERVICE_DISABLE_AUTH: "true"
+  LOG_SERVICE_MANAGER_URL: "http://harness-manager:9090/api"
+  LOG_SERVICE_REDIS_DISABLE_EXPIRY_WATCHER: "false"
+  LOG_SERVICE_ENDPOINT: '{{ .Values.endpoint | default (printf "%s/log-service/" .Values.global.loadbalancerURL) }}'
+  LOG_SERVICE_MINIO_ENABLED: '{{ .Values.s3.enableMinioSupport }}'
+  # -- if .Values.s3.endpoint is not defined, minio's dns will be chosen by default.
+  LOG_SERVICE_S3_ENDPOINT: '{{ ternary (printf "http://minio.%s.svc.cluster.local:9000" .Release.Namespace) .Values.s3.endpoint (and .Values.s3.enableMinioSupport (not .Values.s3.endpoint)) }}'
+  LOG_SERVICE_S3_BUCKET: '{{ .Values.s3.bucketName }}'
+  LOG_SERVICE_S3_REGION: '{{ .Values.s3.region }}'
+  LOG_SERVICE_GCS_BUCKET: '{{ .Values.gcs.bucketName }}'
+  LOG_SERVICE_GCS_REGION: '{{ .Values.gcs.region }}'
+  LOG_SERVICE_GCS_ENDPOINT: '{{ .Values.gcs.endpoint }}'
+  # -- if .Values.database.redis.logservice.enabledByDefault then use Redis as the stream, otherwise it will use memory mode, which is not compatible with more than 1 replica
+  LOG_SERVICE_REDIS_ENDPOINT: '{{ $redisConnection := include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "logservice" "unsetProtocol" true) }}{{ ternary $redisConnection "" .Values.database.redis.logservice.enabledByDefault }}'
+  LOG_SERVICE_REDIS_MASTER_NAME: '{{ ternary "harness-redis" "" .Values.global.database.redis.installed }}'
+  LOG_SERVICE_REDIS_SENTINEL_ADDRS: '{{ $redisConnection := include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "logservice" "unsetProtocol" true) }}{{ ternary $redisConnection "" .Values.global.database.redis.installed }}'
+  LOG_SERVICE_REDIS_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  LOG_SERVICE_STREAM_USE_PROTOBUF: '{{ .Values.stream.enableProtobuf }}'
+  LOG_SERVICE_UPLOAD_USING_LINK_ENABLED: "true"
+  LOG_SERVICE_UPLOAD_USING_LINK_CD_ENABLED: "true"
+  LOG_SERVICE_PIPELINE_BASE_URL: 'http://pipeline-service:12001/api'
+  LOG_SERVICE_PLATFORM_BASE_URL: 'http://ng-manager:7090'
+  LOG_SERVICE_PLATFORM_ACCESS_CONTROL_BASE_URL: 'http://access-control:9006/api'
+  LOG_SERVICE_GENAI_ENDPOINT: 'http://genai-service:8000'
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  FF_SERVER_BASE_URL: 'http://ff-admin-server/api/1.0'
+gcs:
+  # -- gcs.endpoint determines whether to use gcs or s3 store backend. If defined, it will take priority over s3.
+  endpoint: ""
+  bucketName: ""
+  region: ""
+### Default values are configured to work with Minio, override if you are using own s3 buckets
+s3:
+  # -- when defining s3.endpoint, ensure that gcs.endpoint is not defined or is an empty string.
+  endpoint: ""
+  # -- This will replace S3 endpoint and also set LOG_SERVICE_MINIO_ENABLED=true. Note: Minio isn't recommended for production environments.
+  enableMinioSupport: true
+  bucketName: "logs"
+  region: "us-east-1"
+stream:
+  # -- protobuf reduces the memory usage in redis and the amount of XADD operations
+  enableProtobuf: true
+rbac:
+  rules: []

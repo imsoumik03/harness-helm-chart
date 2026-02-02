@@ -1,0 +1,58 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: idp-ui-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+    #kubernetes.io/ingress.class: nginx130
+spec:
+  ingressClassName: idp-app-default
+  rules:
+    - http:
+        paths:
+          - path: /{{.Values.idp_namespace}}/idp(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: idp-ui
+                port:
+                  name: http-backend
+          - path: /{{.Values.idp_namespace}}/gateway/idp(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: idp-ui
+                port:
+                  name: http-backend
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: idp-ui-ingress-acc
+  annotations:
+    #kubernetes.io/ingress.class: nginx130
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: 'true'
+spec:
+  ingressClassName: idp-app-default
+  rules:
+    - http:
+        paths:
+          - path: /{{.Values.idp_account_id}}/idp(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: idp-ui
+                port:
+                  name: http-backend
+          - path: /{{.Values.idp_account_id}}/gateway/idp(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: idp-ui
+                port:
+                  name: http-backend

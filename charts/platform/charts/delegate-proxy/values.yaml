@@ -1,0 +1,133 @@
+# Default values for delegate-proxy
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  pdb:
+    create: false
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  imagePullSecrets: []
+  useMinimalDelegateImage: false
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+    disableHostInIngress: false
+    pathType: ImplementationSpecific
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+replicaCount: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+image:
+  registry: docker.io
+  repository: harness/delegate-proxy-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.6.0"
+  digest: ""
+  imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+imagePullSecrets: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+resources:
+  limits:
+    memory: 100Mi
+  requests:
+    cpu: 200m
+    memory: 100Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}
+additionalConfigs: {}
+extraVolumes: []
+extraVolumeMounts: []
+virtualService:
+  annotations: {}
+  objects:
+    - name: delegate-proxy
+      pathMatchType: prefix
+      paths:
+        - path: '/storage'
+ingress:
+  annotations: {}
+  objects:
+    - name: delegate-proxy
+      paths:
+        - path: '/storage'
+config:
+  proxy.conf: |-
+    server { root /www/data;proxy_http_version 1.1;
+    }
+pdb:
+  create: false
+probes:
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+      scheme: HTTP
+    timeoutSeconds: 10
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+      scheme: HTTP
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3

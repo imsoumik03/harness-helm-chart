@@ -1,0 +1,140 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bg-processor-every-2h
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chaos-manager.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{.Values.jobs.bg_processor.cronJobs.one.schedule}}
+  successfulJobsHistoryLimit: {{.Values.jobs.bg_processor.cronJobs.one.successfulJobsHistoryLimit}}
+  failedJobsHistoryLimit: {{.Values.jobs.bg_processor.cronJobs.one.failedJobsHistoryLimit}}
+  startingDeadlineSeconds: {{.Values.jobs.bg_processor.cronJobs.one.startingDeadlineSeconds}}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{.Values.jobs.bg_processor.cronJobs.one.activeDeadlineSeconds}}
+      backoffLimit: {{.Values.jobs.bg_processor.cronJobs.one.backoffLimit}}
+      template:
+        spec:
+          serviceAccountName: {{ include "chaos-manager.serviceAccountName" . }}
+          restartPolicy: {{.Values.jobs.bg_processor.cronJobs.one.restartPolicy}}
+          initContainers:
+            {{ include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 12 }}
+          {{ include "chaos-manager.pullSecrets" . | nindent 10 }}
+          containers:
+            - name: bg-processor-every-2h
+              {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+              command: {{ include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 16 }}
+              args: {{ include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "./server" "secrets_loader_cmd" "true") | nindent 16 }}
+              {{- end }}
+              image: {{ include "common.images.image" (dict "imageRoot" .Values.jobs.bg_processor.image "global" .Values.global) }}
+              imagePullPolicy: {{ .Values.jobs.bg_processor.image.pullPolicy}}
+              {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+              envFrom:
+                - secretRef:
+                    name: chaos-manager
+              {{- end }}
+              env:
+                {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+                {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD") | indent 16 }}
+                {{- end }}
+                {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database"  "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD" "connectionURIVariableName" "DB_SERVER") | indent 16 }}
+              volumeMounts:
+                {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 16 }}
+                - name: config-volume
+                  mountPath: /tmp/config.yaml
+                  subPath: twoHourJobs.yaml
+          volumes:
+            {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 12 }}
+            - name: config-volume
+              configMap:
+                name: {{.Values.jobs.bg_processor.cronJobs.one.configMapName}}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bg-processor-every-24h
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chaos-manager.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{.Values.jobs.bg_processor.cronJobs.two.schedule}}
+  successfulJobsHistoryLimit: {{.Values.jobs.bg_processor.cronJobs.two.successfulJobsHistoryLimit}}
+  failedJobsHistoryLimit: {{.Values.jobs.bg_processor.cronJobs.two.failedJobsHistoryLimit}}
+  startingDeadlineSeconds: {{.Values.jobs.bg_processor.cronJobs.two.startingDeadlineSeconds}}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{.Values.jobs.bg_processor.cronJobs.two.activeDeadlineSeconds}}
+      backoffLimit: {{.Values.jobs.bg_processor.cronJobs.two.backoffLimit}}
+      template:
+        spec:
+          serviceAccountName: {{ include "chaos-manager.serviceAccountName" . }}
+          restartPolicy: {{.Values.jobs.bg_processor.cronJobs.two.restartPolicy}}
+          initContainers:
+            {{ include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 12 }}
+          {{ include "chaos-manager.pullSecrets" . | nindent 10 }}
+          containers:
+            - name: bg-processor-every-24h
+              {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+              command: {{ include "harnesscommon.secretsLoader.command" (dict "ctx" $) | nindent 16 }}
+              args: {{ include "harnesscommon.secretsLoader.args" (dict "ctx" $ "entry_point" "./server" "secrets_loader_cmd" "true") | nindent 16 }}
+              {{- end }}
+              image: {{ include "common.images.image" (dict "imageRoot" .Values.jobs.bg_processor.image "global" .Values.global) }}
+              imagePullPolicy: {{ .Values.jobs.bg_processor.image.pullPolicy}}
+              {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+              envFrom:
+                - secretRef:
+                    name: chaos-manager
+              {{- end }}
+              env:
+                {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+                {{- include "harnesscommon.dbv3.mongoEnv" (dict "ctx" $ "database" "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD") | indent 16 }}
+                {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 16}}
+                {{- end }}
+                {{- include "harnesscommon.dbv3.mongoConnectionEnv" (dict "ctx" $ "database"  "harness-chaos" "userVariableName" "DB_USER" "passwordVariableName" "DB_PASSWORD" "connectionURIVariableName" "DB_SERVER") | indent 16 }}
+              volumeMounts:
+                {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 16 }}
+                - name: config-volume
+                  mountPath: /tmp/config.yaml
+                  subPath: dailyJobs.yaml
+          volumes:
+            {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 12 }}
+            - name: config-volume
+              configMap:
+                name: {{.Values.jobs.bg_processor.cronJobs.two.configMapName}}
+          {{- with .Values.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

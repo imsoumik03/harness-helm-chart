@@ -1,0 +1,15 @@
+{{- $serviceName := "search" }}
+{{- range .Values.harnessDisks.disks }}
+{{- if eq .servicename $serviceName }}
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: {{ include "codesearch.name" $ }}
+  annotations:
+    "helm.sh/hook": "pre-install"
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+{{- end}} 
+{{- end}}

@@ -1,0 +1,747 @@
+# Default values for platform-service
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  opa:
+    enabled: true
+  jfr:
+    enabled: false
+  fips: false
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: "http://test/abc"
+  imagePullSecrets: []
+  stackDriverLoggingEnabled: false
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+    port: 8889
+    path: /metrics
+  smtpCreateSecret:
+    enabled: false
+    SMTP_USERNAME: ""
+    SMTP_PASSWORD: ""
+    SMTP_HOST: ""
+    SMTP_USE_SSL: "true"
+    SMTP_PORT: "465"
+    secrets:
+      kubernetesSecrets:
+        - secretName: ""
+          keys:
+            SMTP_USERNAME: ""
+            SMTP_PASSWORD: ""
+            SMTP_HOST: ""
+            SMTP_PORT: ""
+            SMTP_USE_SSL: ""
+      secretManagement:
+        externalSecretsOperator:
+          - secretStore:
+              name: ""
+              kind: ""
+            remoteKeys:
+              SMTP_USERNAME:
+                name: ""
+                property: ""
+              SMTP_PASSWORD:
+                name: ""
+                property: ""
+              SMTP_HOST:
+                name: ""
+                property: ""
+              SMTP_PORT:
+                name: ""
+                property: ""
+              SMTP_USE_SSL:
+                name: ""
+                property: ""
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+      timescaledb:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+  istio:
+    enableRegexRoutes: false
+    # -- create virtualServices objects
+    enabled: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+database:
+  mongo:
+    notifications:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    audits:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    resourcegroups:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    lock:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+replicaCount: 1
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+progressDeadlineSeconds: 600
+image:
+  registry: docker.io
+  repository: harness/platform-service-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.104.0"
+  digest: ""
+  imagePullSecrets: []
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+appLogLevel: INFO
+java:
+  memory: "3072m"
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+podAnnotations: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 9005
+resources:
+  limits:
+    memory: 8192Mi
+  requests:
+    cpu: 0.5
+    memory: 1024Mi
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+imagePullSecrets: {}
+additionalConfigs: {}
+java17flags: ""
+errorTracking:
+  enabled: false
+  collectorURL: ''
+# extraVolumes:
+# - name: volume-test
+#   configMap:
+#     name: test-config
+#     readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: test-volume-mount
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+shutdownHooksEnabled: false
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+# extraEnvVars:
+# - name: POD_NAME
+#   valueFrom:
+#     fieldRef:
+#       fieldPath: metadata.name
+extraEnvVars: []
+virtualService:
+  annotations: {}
+  objects:
+    - name: platform-service
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/notifications/'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/audit/'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/resourcegroup/'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/streaming-manager-service/'
+    - name: platform-service-v1-apis
+      pathMatchType: regex
+      pathRewrite: "/api/\\1"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/notification-rules/validate-rules/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/default-notification-template-set/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/notification-channels/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/notification-rules/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/resource-groups/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/validate-channels/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/default-notification-template-set)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/notification-channels)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/notification-rules)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/resource-groups)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/default-notification-template-set/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/notification-channels/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/notification-rules/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/resource-groups/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/validate-channels/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/validate-rules/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/data-sinks/validate-unique-identifier/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/default-notification-template-set)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/notification-channels)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/notification-rules)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/resource-groups)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/streaming-destinations/[^\/]+/validate-unique-identifier)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/data-sinks/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/default-notification-template-set/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/notification-channels/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/notification-rules/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/streaming-destinations/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/validate-channels/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/validate-rules/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/notification-rules/notifications-simulate)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups/count)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups/filter)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/streaming-destinations/aggregate)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/streaming-destinations/cards)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/streaming-destinations/validate)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/attachments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/audits)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/data-sinks)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/default-notification-template-set)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/notification-channels)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/notification-resource-list)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/notification-rules)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/streaming-destinations)\/?$'
+ingress:
+  objects:
+    - name: notification-service
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/notifications(/|$)(.*)'
+    - name: audit-service
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/audit(/|$)(.*)'
+    - name: streaming-manager-service
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/streaming-manager-service(/|$)(.*)'
+    - name: platform-service-v1-apis
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /api/$1
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/resource-groups)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/resource-groups/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/resource-groups)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/resource-groups/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/resource-groups)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/resource-groups/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/streaming-destinations)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/streaming-destinations/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/notification-channels/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/notification-channels)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/notification-channels/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/notification-channels)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/notification-channels/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/notification-channels)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/notification-rules/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/notification-rules)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/notification-rules/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/notification-rules)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/notification-rules/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/notification-rules)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/validate-channels/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/validate-rules/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/validate-channels/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/validate-rules/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/validate-channels/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/validate-rules/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/notification-resource-list)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/attachments)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/default-notification-template-set)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/default-notification-template-set/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/default-notification-template-set)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/default-notification-template-set/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/default-notification-template-set)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/default-notification-template-set/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/data-sinks)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/data-sinks/validate-unique-identifier/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/data-sinks/.+)'
+secrets:
+  default:
+    ET_AGENT_TOKEN: "DUMMY"
+    CF_CLIENT_API_KEY: ""
+    TEMPLATE_SERVICE_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    PIPELINE_SERVICE_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    APPSEC_SERVICE_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        ET_AGENT_TOKEN: ""
+        CF_CLIENT_API_KEY: ""
+        TEMPLATE_SERVICE_SECRET: ""
+        PIPELINE_SERVICE_SECRET: ""
+        APPSEC_SERVICE_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          ET_AGENT_TOKEN:
+            name: ""
+            property: ""
+          CF_CLIENT_API_KEY:
+            name: ""
+            property: ""
+          TEMPLATE_SERVICE_SECRET:
+            name: ""
+            property: ""
+          PIPELINE_SERVICE_SECRET:
+            name: ""
+            property: ""
+          APPSEC_SERVICE_SECRET:
+            name: ""
+            property: ""
+config:
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  GRPC_MANAGER_TARGET: harness-manager:9879
+  GRPC_MANAGER_AUTHORITY: harness-manager:9879
+  INTERNAL_GRPC_MANAGER_TARGET: harness-manager:9879
+  INTERNAL_GRPC_MANAGER_AUTHORITY: harness-manager:9879
+  ENABLE_AUDIT_SERVICE: "true"
+  AUDIT_ENABLED: "true"
+  ENABLE_RESOURCE_GROUP: "true"
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: harness-redis
+  LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  ACCESS_CONTROL_ENABLED: "true"
+  DISTRIBUTED_LOCK_IMPLEMENTATION: REDIS
+  MANAGER_CLIENT_BASEURL: http://harness-manager:9090/api/
+  RBAC_URL: http://ng-manager:7090/
+  NG_MANAGER_CLIENT_BASEURL: http://ng-manager:7090/
+  DBOPS_SERVICE_CLIENT_BASEURL: http://db-devops-service:5001/
+  GITOPS_SERVICE_CLIENT_BASEURL: http://gitops:7908/api/v1/
+  PIPELINE_SERVICE_CLIENT_BASEURL: http://pipeline-service:12001/api/
+  SERVICE_CONNECT_TIMEOUT: "15"
+  PIPELINE_SERVICE_READ_TIMEOUT: "15"
+  TEMPLATE_SERVICE_CLIENT_BASEURL: http://template-service:15002/api/
+  TEMPLATE_SERVICE_BASE_URL: http://template-service:15002/api/
+  IDP_SERVICE_CLIENT_BASEURL: http://idp-service:12003/
+  PLATFORM_SERVICE_CLIENT_BASEURL: http://platform-service:9005/api/
+  ENFORCEMENT_CHECK_ENABLED: "true"
+  MONGO_MAX_DOCUMENT_LIMIT: "10000"
+  NOTIFICATION_ATTACHMENTS_CLEANUP_FREQUENCY_MINS: "180"
+  NOTIFICATION_ATTACHMENTS_TTL_DAYS: "7"
+  RESOURCEGROUP_MONGO_MAX_DOCUMENT_LIMIT: "10000"
+  AUDIT_MONGO_MAX_OPERATION_TIME_IN_MILLIS: "25000"
+  RESOURCEGROUP_MONGO_MAX_OPERATION_TIME_IN_MILLIS: "25000"
+  MONGO_MAX_OPERATION_TIME_IN_MILLIS: "20000"
+  STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
+  LOGGING_LEVEL: '{{ .Values.appLogLevel }}'
+  ACCESS_CONTROL_BASE_URL: http://access-control:9006/api/
+  CODE_SERVICE_CLIENT_BASEURL: 'http://code-api:80/'
+  CODE_SERVICE_SECRET: '{{ .Values.codeCreateSecret.CODE_SERVICE_SECRET | quote}}'
+  CHAOS_SERVICE_CLIENT_BASEURL: "http://chaos-manager-service:8080/"
+  HAR_SERVICE_CLIENT_BASEURL: 'http://registry-api:8181/api/'
+  CDE_MANAGER_CLIENT_BASEURL: 'http://cde-manager:80/api/'
+  RESOURCE_GROUP_CLIENT_BASE_URL: http://access-control:9006/api/
+  AUDIT_CLIENT_BASEURL: http://platform-service:9005/api/
+  MEMORY: '{{ .Values.java.memory }}'
+  JAVA_ADVANCED_FLAGS: '{{- include "harnesscommon.jfr.v1.printJavaAdvancedFlags" (dict "ctx" $) }}'
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  LOCK_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  REDISSON_PING_CONNECTION_INTERVAL_IN_MILLIS: "0"
+  CHATBOT_SERVICE_URL: http://chatbot-service:8000/chat
+  MONGO_MESSAGE_CONSUMER_THREAD_COUNT: "4"
+  CODE_READ_TIMEOUT: "15"
+  HAR_READ_TIMEOUT: "15"
+  PLATFORM_READ_TIMEOUT: "10"
+  CDE_READ_TIMEOUT: "15"
+  NOTIFICATION_QUEUE_METRICS_PUBLISH_INTERVAL: "2"
+  CG_MANAGER_READ_TIMEOUT: "15"
+  CE_NG_READ_TIMEOUT: "15"
+  PIPELINE_READ_TIMEOUT: "15"
+  OPA_READ_TIMEOUT: "10"
+  TEMPLATE_SERVICE_READ_TIMEOUT: "10"
+  TEMPLATE_SERVICE_CONNECT_TIMEOUT: "15"
+  IDP_READ_TIMEOUT: "10"
+  ACCESS_CONTROL_READ_TIMEOUT: "10"
+  CF_CLIENT_CONFIG_URL: "https://config.feature-flags.uat.harness.io/api/1.0"
+  CF_CLIENT_EVENT_URL: "https://event.feature-flags.uat.harness.io/api/1.0"
+  CF_CLIENT_ANALYTICS_ENABLED: "true"
+  CF_CLIENT_CONNECTION_TIMEOUT: "10000"
+  CF_CLIENT_READ_TIMEOUT: "45000"
+  CF_CLIENT_BUFFER_SIZE: "10240"
+  CF_CLIENT_RETRIES: "6"
+  CF_CLIENT_SLEEP_INTERVAL: "5000"
+  FEATURE_FLAG_SYSTEM: "LOCAL"
+  SYNC_FEATURES_TO_CF: "false"
+  SCOPE_SELECTOR_THRESHOLD: "75"
+  RESOURCE_IDENTIFIERS_THRESHOLD: "1300"
+  DYNAMIC_RESOURCE_REFRESH_INTERVAL_IN_SECONDS: "300"
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  EXPORT_METRICS_TO_STACK_DRIVER: "true"
+jfr:
+  image:
+    registry: registry.access.redhat.com
+    repository: ubi8/ubi-minimal
+    pullPolicy: Always
+    tag: "8.9-1029"
+    digest: ""
+    imagePullSecrets: []
+codeCreateSecret:
+  enabled: true
+  CODE_SERVICE_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+probes:
+  livenessProbe:
+    httpGet:
+      path: /api/admin/healthcheck/liveness
+      port: 7458
+      scheme: HTTP
+    timeoutSeconds: 10
+    periodSeconds: 60
+    successThreshold: 1
+    failureThreshold: 5
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 9005
+      scheme: HTTP
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: 9005
+      scheme: HTTP
+    initialDelaySeconds: 25
+    timeoutSeconds: 1
+    periodSeconds: 5
+    successThreshold: 1
+    failureThreshold: 32
+proxy:
+  enabled: false
+  host: ""
+  port: ""
+rbac:
+  rules: []
+pdb:
+  create: false

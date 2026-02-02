@@ -1,0 +1,919 @@
+# Default values for access-control
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets
+# --global.imageRegistry Global Docker image registry
+# --global.imagePullSecrets Global Docker registry secret names as an array
+# --global.storageClass Global StorageClass for Persistent Volume(s)
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  jfr:
+    enabled: false
+  fips: false
+  commonAnnotations: {}
+  commonLabels: {}
+  kubeVersion: ""
+  loadbalancerURL: ""
+  ha: true
+  stackDriverLoggingEnabled: false
+  opa:
+    enabled: false
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+      timescaledb:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: false
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      protocol: "jdbc:postgresql"
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - timescaledb-single-chart:5432
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  monitoring:
+    enabled: false
+    port: 8889
+    managedPlatform: ""
+    path: /metrics
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  imagePullSecrets: []
+  # -- Wait-For-App initContainers details
+  waitForInitContainer:
+    ## image version
+    ## ref: https://hub.docker.com/r/harness/helm-init-container/tags
+    # --image.registry ; image registry
+    # --image.repository ; image repository
+    # --image.tag ; image tag (immutable tags are recommended)
+    # --image.digest ; image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+    # --image.pullPolicy Image pull policy
+    # --image.imagePullSecrets Specify docker-registry secret names as an array
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+    resources:
+      limits:
+        memory: 128Mi
+      requests:
+        cpu: 128m
+        memory: 128Mi
+    securityContext:
+      runAsUser: 65534
+      runAsNonRoot: true
+    enabled: true
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+# --mongoHosts List of mongo hosts
+mongoHosts: []
+# --replicaCount Number of pods
+##
+replicaCount: 1
+database:
+  postgres:
+    enabled: false
+    protocol: ""
+    hosts:
+      - postgres:5432
+    extraArgs: "sslmode=disable"
+    database: spicedb
+    secrets:
+      kubernetesSecrets:
+        - secretName: ""
+          keys:
+            POSTGRES_USER: ""
+            POSTGRES_PASSWORD: ""
+      secretManagement:
+        externalSecretsOperator:
+          - secretStore:
+              name: "project"
+              kind: "ClusterSecretStore"
+            remoteKeys:
+              POSTGRES_USER:
+                name: "SPICEDBSERVICE_POSTGRES_USER"
+                property: ""
+              POSTGRES_PASSWORD:
+                name: "SPICEDBSERVICE_POSTGRES_PASSWORD"
+                property: ""
+  redis:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    lock:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        secret: ""
+        enabled: false
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+  mongo:
+    accesscontrol:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    resourcegroups:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+# -- deployment.updateStrategy.type Deployment strategy type
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#update-strategies
+## e.g:
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+# -- schedulerName Specifies the schedulerName, if it's nil uses kube-scheduler
+## https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+schedulerName: ""
+# -- terminationGracePeriodSeconds In seconds, time the given to the pod needs to terminate gracefully
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod/#termination-of-pods
+##
+terminationGracePeriodSeconds: "180"
+# -- set progressDealineSeconds in seconds, number of seconds the Deployment controller waits before indicating failure
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+progressDeadlineSeconds: 720
+# -- Configurations for Harness application
+
+resourceGroupServiceEnabled: true
+config:
+  ACCESS_CONTROL_BASE_URL: 'http://access-control:9006/api/'
+  ACCESS_CONTROL_PREFERENCE_ENABLED: 'true'
+  ACCESS_CONTROL_SERVICE_BASE_URL: "http://access-control:9006/api/"
+  ACCOUNT_CLIENT_BASE_URL: "http://harness-manager:9090/api/"
+  ACL_RECONCILIATION_ITERATOR_ENABLED: 'true'
+  ACL_RECONCILIATION_ITERATOR_INTERVAL: "172800"
+  ACL_RECONCILIATION_ITERATOR_THREAD_COUNT: "5"
+  SKIP_REMOVE_STALE_ACLS_JOB_USING_INACTIVE_PERMISSIONS: 'true'
+  AGGREGATOR_ENABLED: 'true'
+  AUDIT_CLIENT_BASEURL: 'http://platform-service:9005/api/'
+  AUDIT_CLIENT_BASE_URL: "http://platform-service:9005/api/"
+  AUDIT_ENABLED: 'true'
+  BATCH_SIZE_FOR_ACL_CREATION: "5000"
+  ACL_HEAVY_OPERATION_THRESHOLD: "100000"
+  ACL_HEAVY_OPERATION_SLEEP_IN_MILLIS: "5000"
+  MAX_ACLS_PER_ACCESS_POLICY_CHANGE: "5000000"
+  MANAGED_ROLES_SLEEP_IN_MILLIS: "10000"
+  ROLE_MANAGEMENT_SERVICE_DELAY_IN_MINUTES: "3"
+  ROLE_MANAGEMENT_SERVICE_INITIAL_DELAY_IN_MINUTES: "3"
+  ACL_DELETION_SLEEP_IN_MILLIS: "1000"
+  BATCH_SIZE_FOR_ACL_DELETION: "10000"
+  SCOPE_SELECTOR_THRESHOLD: "75"
+  RESOURCE_IDENTIFIERS_THRESHOLD: "1300"
+  CE_NEXTGEN_CLIENT_BASEURL: "http://nextgen-ce:6340/ccm/api/"
+  CODE_SERVICE_CLIENT_BASEURL: 'http://code-api:80/'
+  CHAOS_SERVICE_CLIENT_BASEURL: "http://chaos-manager-service:8080/"
+  HAR_SERVICE_CLIENT_BASEURL: 'http://registry-api:8181/api/'
+  CDE_MANAGER_CLIENT_BASEURL: 'http://cde-manager:80/api/'
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  DISTRIBUTED_LOCK_IMPLEMENTATION: REDIS
+  ENABLE_ACCESS_CONTROL: 'true'
+  ENABLE_ACL_PROCESSING_THROUGH_OUTBOX: 'true'
+  ENABLE_AUDIT: 'true'
+  ENABLE_AUTH: 'true'
+  ENABLE_PARALLEL_PROCESSING_OF_USERGROUP_UPDATES: 'true'
+  ENABLE_RESOURCE_GROUP: '{{ .Values.resourceGroupServiceEnabled }}'
+  ENFORCEMENT_CHECK_ENABLED: 'true'
+  EVENTS_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  EVENTS_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: harness-redis
+  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  FEATURE_FLAG_CLIENT_BASE_URL: "http://harness-manager:9090/api/"
+  GOOGLE_APPLICATION_CREDENTIALS: /opt/harness/monitoring/stackdriver.json
+  IDP_SERVICE_CLIENT_BASEURL: http://idp-service:12003/
+  JAVA_ADVANCED_FLAGS: '{{- include "harnesscommon.jfr.v1.printJavaAdvancedFlags" (dict "ctx" $) }}'
+  LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  LOCK_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  LOGGING_LEVEL: INFO
+  MANAGER_CLIENT_BASEURL: http://harness-manager:9090/api/
+  MEMORY: '{{ .Values.java.memory }}'
+  MONGO_MAX_OPERATION_TIME_IN_MILLIS: "15000"
+  RESOURCEGROUP_MONGO_MAX_OPERATION_TIME_IN_MILLIS: "25000"
+  ROLE_BATCH_SIZE_TO_DELETE_PERMISSIONS: "1000"
+  NG_MANAGER_CLIENT_BASEURL: http://ng-manager:7090/
+  GITOPS_SERVICE_CLIENT_BASEURL: http://gitops:7908/api/v1/
+  NOTIFICATION_ENVIRONMENT: ONPREM
+  NOTIFICATION_SLACK_WEBHOOK_URL: ""
+  ORGANIZATION_CLIENT_BASE_URL: "http://ng-manager:7090/"
+  OUTBOX_LOCK_DURATION: "5"
+  PIPELINE_SERVICE_CLIENT_BASEURL: http://pipeline-service:12001/api/
+  DBOPS_SERVICE_CLIENT_BASEURL: http://db-devops-service:5001/
+  PROJECT_CLIENT_BASE_URL: "http://ng-manager:7090/"
+  RESOURCEGROUP_MONGO_MAX_DOCUMENT_LIMIT: "10000"
+  RESOURCE_GROUP_ITERATOR_ENABLED: 'true'
+  RESOURCE_GROUP_ITERATOR_INTERVAL: "21600"
+  RESOURCE_GROUP_ITERATOR_THREAD_COUNT: "2"
+  SCOPE_ITERATOR_ENABLED: 'true'
+  IGNORE_SERVICE_NAME_MATCH: 'true'
+  SCOPE_ITERATOR_INTERVAL: "43200"
+  SCOPE_ITERATOR_THREAD_COUNT: "2"
+  SERVICEACCOUNT_CLIENT_BASE_URL: "http://ng-manager:7090/"
+  SERVICEACCOUNT_ITERATOR_ENABLED: 'true'
+  SERVICEACCOUNT_ITERATOR_INTERVAL: "21600"
+  SERVICEACCOUNT_ITERATOR_THREAD_COUNT: "2"
+  STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
+  SUPPORTPREFERENCE_ITERATOR_ENABLED: 'true'
+  SUPPORTPREFERENCE_ITERATOR_INTERVAL: "600"
+  SUPPORTPREFERENCE_ITERATOR_THREAD_COUNT: "5"
+  TEMPLATE_SERVICE_CLIENT_BASEURL: http://template-service:15002/api/
+  USER_CLIENT_BASE_URL: "http://ng-manager:7090/"
+  USER_GROUP_CLIENT_BASE_URL: "http://ng-manager:7090/"
+  USER_GROUP_ITERATOR_ENABLED: 'true'
+  USER_GROUP_ITERATOR_INTERVAL: "43200"
+  USER_GROUP_ITERATOR_THREAD_COUNT: "2"
+  USER_ITERATOR_ENABLED: 'true'
+  USER_ITERATOR_INTERVAL: "43200"
+  USER_ITERATOR__THREAD_COUNT: "2"
+  REDISSON_PING_CONNECTION_INTERVAL_IN_MILLIS: "0"
+  SKIP_ADD_ACL_QUERY_STRING_V2: 'false'
+  POLICY_ANALYZER_QUERY_TIMEOUT_IN_MS: "30000"
+  CG_MANAGER_READ_TIMEOUT: "10"
+  PLATFORM_READ_TIMEOUT: "10"
+  NG_MANAGER_READ_TIMEOUT: "60"
+  OPA_CONNECTIVITY_ENABLED: '{{.Values.global.opa.enabled }}'
+  OPA_SERVER_BASEURL: 'http://policy-mgmt.{{ .Release.Namespace }}.svc.cluster.local:3000/'
+  ENABLE_ACCESS_CHECK_USING_PRINCIPAL_UNIQUE_ID: 'false'
+  FIPS_ENABLED: '{{ .Values.global.fips }}'
+  ENABLE_LOAD_PRIVILEGED_ROLES_FROM_DB: 'true'
+  IN_MEMORY_REFRESH_OF_RESOURCE_TYPE_AND_PERMISSIONS_MAP_INTERVAL_SECONDS: "5"
+  REFRESH_PRIVILEGED_ROLES_INTERVAL_SECONDS: "300"
+  IN_MEMORY_REFRESH_OF_DISABLED_PERMISSIONS_INTERVAL_SECONDS: "5"
+  TEMPLATE_SERVICE_READ_TIMEOUT: "10"
+  CE_NG_READ_TIMEOUT: "15"
+  CODE_READ_TIMEOUT: "15"
+  OPA_READ_TIMEOUT: "10"
+  IDP_READ_TIMEOUT: "10"
+  HAR_READ_TIMEOUT: "10"
+  CDE_READ_TIMEOUT: "15"
+  ACCESS_CONTROL_READ_TIMEOUT: "10"
+  PIPELINE_READ_TIMEOUT: "15"
+  DYNAMIC_RESOURCE_REFRESH_INTERVAL_IN_SECONDS: "300"
+  EXPORT_METRICS_TO_STACK_DRIVER: "true"
+  ENABLE_SPICE_DB_SERVICE: "false"
+  SPICE_DB_SERVICE_HOST: "localhost"
+  SPICE_DB_SERVICE_GRPC_PORT: "50051"
+  SPICE_DB_SERVICE_AUTH_TOKEN: "foobar"
+  ENABLE_SPICEDB_UG_MIGRATION: "false"
+  SPICEDB_UG_MIGRATION_LOOP_INTERVAL_SECONDS: "7200"
+  SPICEDB_UG_MIGRATION_FORWARD_SCAN_BATCH_SIZE: "500"
+  SPICEDB_UG_MIGRATION_SLEEP_BETWEEN_ACCOUNTS_MILLIS: "1000"
+  SPICEDB_UG_MIGRATION_FORWARD_SCAN_PROGRESS_LOG_EVERY_K_DOCS: "1000"
+  SPICEDB_UG_MIGRATION_ESTIMATE_COUNT_TIMEOUT_MILLIS: "10000"
+  ENABLE_SPICEDB_RA_MIGRATION: "false"
+  SPICEDB_RA_MIGRATION_LOOP_INTERVAL_SECONDS: "7200"
+  SPICEDB_RA_MIGRATION_FORWARD_SCAN_BATCH_SIZE: "500"
+  SPICEDB_RA_MIGRATION_SLEEP_BETWEEN_ACCOUNTS_MILLIS: "1000"
+  SPICEDB_RA_MIGRATION_FORWARD_SCAN_PROGRESS_LOG_EVERY_K_DOCS: "1000"
+  SPICEDB_RA_MIGRATION_ESTIMATE_COUNT_TIMEOUT_MILLIS: "10000"
+  ENABLE_SPICEDB_SCOPE_MIGRATION: "false"
+  SPICEDB_SCOPE_MIGRATION_LOOP_INTERVAL_SECONDS: "7200"
+  SPICEDB_SCOPE_MIGRATION_FORWARD_SCAN_BATCH_SIZE: "500"
+  SPICEDB_SCOPE_MIGRATION_SLEEP_BETWEEN_ACCOUNTS_MILLIS: "1000"
+  SPICEDB_SCOPE_MIGRATION_FORWARD_SCAN_PROGRESS_LOG_EVERY_K_DOCS: "1000"
+  SPICEDB_SCOPE_MIGRATION_ESTIMATE_COUNT_TIMEOUT_MILLIS: "10000"
+  AC_UNIQUEID_MIGRATION_BATCH_SIZE: "1000"
+  AC_UNIQUEID_MIGRATION_SLEEP_DELAY_MS: "1000"
+codeCreateSecret:
+  enabled: true
+  CODE_SERVICE_SECRET: ""
+java:
+  memory: 512m
+pdb:
+  create: false
+## image version
+## ref: https://hub.docker.com/r/harness/accesscontrol-service-signed/tags
+# --image.registry ; image registry
+# --image.repository ; image repository
+# --image.tag ; image tag (immutable tags are recommended)
+# --image.digest ; image digest in the way sha256:aa.... Please note this parameter, if set, will override the tag
+# --image.pullPolicy Image pull policy
+# --image.imagePullSecrets Specify docker-registry secret names as an array
+image:
+  registry: docker.io
+  repository: harness/accesscontrol-service-signed
+  pullPolicy: IfNotPresent
+  tag: "1.178.0"
+  digest: ""
+  imagePullSecrets: []
+## -- mongo secrets reference passed to the application
+##
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+# --nameOverride String to partially override common.names.fullname template (will maintain the release name)
+##
+nameOverride: ""
+# --fullnameOverride String to fully override common.names.fullname template
+##
+fullnameOverride: ""
+## Specifies whether a ServiceAccount should be created
+##
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+podAnnotations: {}
+podSecurityContext: {}
+# fsGroup: 2000
+
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 9006
+## Pod resource requests and limits
+## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+# --resources.limits The resources limits for the containers
+# --resources.requests The requested resources for the containers
+##
+resources:
+  limits:
+    memory: 8192Mi
+  requests:
+    cpu: 1
+    memory: 712Mi
+shutdownHooksEnabled: false
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+## Autoscaling configuration
+# --autoscaling.enabled Enable autoscaling for pods
+# --autoscaling.minReplicas Minimum number of replicas
+# --autoscaling.maxReplicas Maximum number of replicas
+# --autoscaling.targetCPU Target CPU utilization percentage
+# --autoscaling.targetMemory Target Memory utilization percentage
+##
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+## Configure extra options for liveness probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+# -- livenessProbe.enabled Enable livenessProbe
+# -- livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+# -- livenessProbe.periodSeconds Period seconds for livenessProbe
+# -- livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+# -- livenessProbe.failureThreshold Failure threshold for livenessProbe
+# -- livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  httpGet:
+    path: /api/admin/healthcheck/liveness
+    port: 7458
+    scheme: HTTP
+  enabled: true
+  periodSeconds: 60
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 5
+## Configure extra options for readiness probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+# -- readinessProbe.enabled Enable readinessProbe
+# -- readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+# -- readinessProbe.periodSeconds Period seconds for readinessProbe
+# -- readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+# -- readinessProbe.failureThreshold Failure threshold for readinessProbe
+# -- readinessProbe.successThreshold Success threshold for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  periodSeconds: 5
+  timeoutSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+## Configure extra options for startupProbe probe
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+# -- startupProbe.enabled Enable startupProbe
+# -- startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+# -- startupProbe.periodSeconds Period seconds for startupProbe
+# -- startupProbe.timeoutSeconds Timeout seconds for startupProbe
+# -- startupProbe.failureThreshold Failure threshold for startupProbe
+# -- startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: true
+  initialDelaySeconds: 25
+  periodSeconds: 5
+  timeoutSeconds: 1
+  successThreshold: 1
+  failureThreshold: 32
+# -- extraEnvVars Extra environment variables to be set on container
+## e.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: "bar"
+##
+extraEnvVars: []
+# -- extraEnvVarsCM ConfigMap with extra environment variables
+##
+extraEnvVarsCM: ""
+# -- extraEnvVarsSecret Secret with extra environment variables
+##
+extraEnvVarsSecret: ""
+# --  extraVolumes Optionally specify extra list of additional volumes for ; pods
+##
+# e.g.
+# extraVolumes:
+# - name: service-account
+#   secret:
+#     secretName: redis-ca
+#     items:
+#     - key: redis-labs-ca-truststore
+#       path: redis_labs_ca_truststore
+# - name: stackdriver
+#   secret:
+#     secretName: stackdriver-creds
+#     items:
+#     - key: stackdriver-key-file
+#       path: stackdriver.json
+# - name: dumps
+#   hostPath:
+#     path: /var/dumps
+#     type: DirectoryOrCreate
+extraVolumes: []
+# --  extraVolumeMounts Optionally specify extra list of additional volumeMounts for ; container(s)
+##
+# e.g.
+# extraVolumeMounts:
+# - name: service-account
+#   mountPath: /opt/harness/svc
+# - name: stackdriver
+#   mountPath: /opt/harness/monitoring
+# - name: dumps
+#   mountPath: /opt/harness/dumps
+extraVolumeMounts: []
+# --initContainers Add additional init containers to the ; pods
+## e.g:
+## initContainers:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+initContainers: []
+# --sidecars Add additional sidecar containers to the ; pods
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+sidecars: []
+# --  affinity Affinity for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+## Note: podAffinityPreset, podAntiAffinityPreset, and nodeAffinityPreset will be ignored when it's set
+##
+affinity: {}
+# --  nodeSelector Node labels for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/user-guide/node-selection/
+##
+nodeSelector: {}
+# --  tolerations Tolerations for pod assignment. Evaluated as a template.
+## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+# -- additionalConfigs Additional configurations for the deployment
+additionalConfigs: {}
+java17flags: ""
+virtualService:
+  annotations: {}
+  objects:
+    - name: access-control-apis
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/authz/'
+    - name: access-control-v1-apis
+      pathMatchType: regex
+      pathRewrite: "/api/\\1"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/resource-groups/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/role-assignments/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/roles/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/analyze-access-policies)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/resource-groups)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/role-assignments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/projects/[^\/]+/roles)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/resource-groups/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/role-assignments/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/roles/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/analyze-access-policies)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/resource-groups)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/role-assignments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/orgs/[^\/]+/roles)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/role-assignments/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/roles/[^\/]+)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/public-access/check-public)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/public-access/disable)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/public-access/enable)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/public-access/is-resource-public)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups/count)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups/filter)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/role-assignments/count)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/roles/count)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/analyze-access-policies)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/resource-groups)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/role-assignments)\/?$'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/(v1/roles)\/?$'
+ingress:
+  objects:
+    - name: access-control-service
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: 'true'
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/authz(/|$)(.*)'
+    - name: resource-group-acs
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/resourcegroup(/|$)(.*)'
+    - name: access-control-v1-apis
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /api/$1
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: 'true'
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/roles)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/roles/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/roles)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/roles/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/roles)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/roles/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/role-assignments)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/role-assignments/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/role-assignments)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/role-assignments/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/role-assignments)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/role-assignments/.+)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/projects/.+/analyze-access-policies)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/orgs/.+/analyze-access-policies)'
+        - path: '{{ .Values.global.ingress.pathPrefix }}/(v1/analyze-access-policies)'
+secrets:
+  default:
+    IDENTITY_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    GITOPS_SERVICE_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    OPA_SERVICE_SECRET: "dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        IDENTITY_SERVICE_SECRET: ""
+        GITOPS_SERVICE_SECRET: ""
+        OPA_SERVICE_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          IDENTITY_SERVICE_SECRET:
+            name: ""
+            property: ""
+          GITOPS_SERVICE_SECRET:
+            name: ""
+            property: ""
+          OPA_SERVICE_SECRET:
+            name: ""
+            property: ""
+jfr:
+  image:
+    registry: registry.access.redhat.com
+    repository: ubi8/ubi-minimal
+    pullPolicy: Always
+    tag: "8.9-1029"
+    digest: ""
+    imagePullSecrets: []
+rbac:
+  rules: []
+# SpiceDB Configuration
+spicedb:
+  enabled: false
+  createDatabase: true # Set to false if database already exists or is managed externally
+  image:
+    repository: authzed/spicedb
+    tag: "v1.46.2"
+    pullPolicy: IfNotPresent
+  metrics:
+    port: 9090
+    path: "/metrics"
+    interval: "120s"
+  config:
+    SPICEDB_DATASTORE_ENGINE: "postgres"
+    SPICEDB_GRPC_NO_TLS: "true"
+    SPICEDB_HTTP_ENABLED: "true"
+    SPICEDB_GRPC_SHUTDOWN_GRACE_PERIOD: "1s"
+    SPICEDB_LOG_LEVEL: "info"
+    SPICEDB_DATASTORE_BOOTSTRAP_OVERWRITE: "true"
+    SPICEDB_TELEMETRY_ENDPOINT: ""
+    SPICEDB_GRPC_PRESHARED_KEY: "foobar"
+    SPICEDB_DATASTORE_CACHE_SIZE_BYTES: "0"
+    SPICEDB_DATASTORE_REVISION_QUANTUM_DURATION: "0s"
+    SPICEDB_METRICS_ENABLED: "true"
+    SPICEDB_METRICS_ADDR: ":{{ .Values.spicedb.metrics.port}}"
+postgres:
+  image:
+    registry: "docker.io"
+    repository: "harness/postgresql"
+    tag: "14.18.0-debian-12-r0"
+    digest: ""
+    pullPolicy: IfNotPresent

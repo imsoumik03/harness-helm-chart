@@ -1,0 +1,117 @@
+# Default values for idp-admin
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+name: idp-admin
+global:
+  loadbalancerURL: 'https://test'
+  commonAnnotations: {}
+  commonLabels: {}
+  pdb:
+    create: false
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    enabled: false
+    className: harness
+    hosts:
+      - my-host.example.org
+    tls:
+      enabled: true
+      secretName: ''
+    objects:
+      annotations: {}
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    virtualService:
+      gateways:
+      hosts:
+  # image pull secrets to use for every image
+  imagePullSecrets: []
+replicaCount: 2
+maxSurge: 100%
+maxUnavailable: 0
+image:
+  registry: docker.io
+  repository: harness/idp-admin-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  #tag: '1.0.0-idp-1253-324016'
+  digest: ''
+  # image pull secrets to use for idp-admin image
+  imagePullSecrets: []
+  tag: 1.35.2
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: false
+  annotations: {}
+  name: 'harness-default'
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 80
+  portName: idp-admin-port
+virtualService:
+  annotations: {}
+  objects:
+    - name: idp-admin
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/idpadmin/'
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/idpadmin'
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPU: ''
+  targetMemory: ''
+nodeSelector: {}
+tolerations: []
+affinity: {}
+resources:
+  limits:
+    memory: '512Mi'
+  requests:
+    cpu: 1
+    memory: '512Mi'
+# extraVolumes:
+#   - name: volume-test
+#     configMap:
+#       name: test-config
+#       # readOnly: true
+extraVolumes: []
+# extraVolumeMounts:
+#   - name: volume-test
+#     mountPath: /opt/harness/config
+extraVolumeMounts: []
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+config:
+  ENABLE_CDN: 'false'
+rbac:
+  rules: []
+ingress:
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/idp-admin(/|$)(.*)'
+pdb:
+  create: false

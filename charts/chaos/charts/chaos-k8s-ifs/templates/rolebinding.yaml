@@ -1,0 +1,23 @@
+{{- if .Values.serviceAccount.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "chaos-k8s-ifs.name" . }}-role-binding
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chaos-k8s-ifs.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "chaos-k8s-ifs.name" . }}-role
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "chaos-k8s-ifs.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

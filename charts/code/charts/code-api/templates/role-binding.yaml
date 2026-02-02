@@ -1,0 +1,35 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kuberesolver
+  namespace: {{ .Release.Namespace }}
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name:   {{ include "code-api.serviceAccountName" . }}-kuberesolver
+  namespace: {{ .Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "code-api.serviceAccountName" . }}
+roleRef:
+  kind: Role
+  name: kuberesolver
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name:   {{ include "code-api.serviceAccountName" . }}-harness-manager-role
+  namespace: {{ .Release.Namespace }}
+subjects:
+- kind: ServiceAccount
+  name: {{ include "code-api.serviceAccountName" . }}
+roleRef:
+  kind: Role
+  name: harness-manager-role
+  apiGroup: rbac.authorization.k8s.io  

@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: '{{ include "looker.name" . }}'
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{- include "looker.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- if .Values.global.ingress.enabled }}
+  HOST_URL: '{{ ternary "https" "http" .Values.global.ingress.tls.enabled }}://{{ first .Values.ingress.hosts }}'
+  {{- else if .Values.global.istio.enabled }}
+  HOST_URL: '{{ ternary "https" "http" (not (empty .Values.global.istio.tls)) }}://{{ first .Values.istio.virtualService.hosts }}'
+  {{- end}}
+  FIRST_NAME: '{{ .Values.config.firstName }}'
+  LAST_NAME: '{{ .Values.config.lastName }}'
+  EMAIL: '{{ .Values.config.email }}'
+  TIMESCALE_CONNECTION_NAME: '{{ .Values.config.timescaleConnectionName }}'
+  TIMESCALE_HOST: '{{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}'
+  TIMESCALE_PORT: '{{ include "harnesscommon.dbconnectionv2.timescalePort" (dict "context" $) }}'
+  TIMESCALE_DATABASE: '{{ .Values.config.timescaleDatabase }}'
+  TIMESCALE_CONNECTION_NAME_FF: '{{ .Values.config.ffConnectionName }}'
+  TIMESCALE_DATABASE_FF: '{{ .Values.config.ffDatabase }}'
+  POSTGRES_CONNECTION_NAME: '{{ .Values.config.stoConnectionName }}'
+  POSTGRES_HOST: '{{ include "looker.postgres.host" . }}'
+  POSTGRES_PORT: '{{ include "looker.postgres.port" . }}'
+  POSTGRES_DATABASE: '{{ include "looker.postgres.database" . }}'
+  POSTGRES_SSL: '{{ include "looker.postgres.ssl" . }}'
+  POSTGRES_VERIFY_SSL: '{{ include "looker.postgres.ssl.verify" . }}'
+  CLICKHOUSE_CONNECTION_NAME: '{{ .Values.config.clickhouseConnectionName }}'
+  CLICKHOUSE_HOST: '{{ .Values.config.clickhouseHost }}'
+  CLICKHOUSE_PORT: '{{ .Values.config.clickhousePort }}'
+  CLICKHOUSE_DATABASE: '{{ .Values.config.clickhouseDatabase }}'
+  CLICKHOUSE_SSL: '{{ .Values.config.clickhouseSsl }}'
+  CLICKHOUSE_VERIFY_SSL: '{{ .Values.config.clickhouseVerifySsl }}'
+  PROJECT_NAME: '{{ .Values.config.projectName }}'
+  DOMAIN_ALLOWLIST: '{{ .Values.global.loadbalancerURL }}'
+  MODELS_DIR: '{{ .Values.models.persistence.mountPath }}'
+  {{- if .Values.mysql.enabled }}
+  LOOKER_MYSQL_HOST: '{{ .Values.mysql.host }}'
+  LOOKER_MYSQL_USERNAME: '{{ .Values.mysql.user }}'
+  LOOKER_MYSQL_DATABASE: '{{ .Values.mysql.database }}'
+  LOOKER_MYSQL_PORT: '{{ .Values.mysql.port }}'
+  {{- end}}
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: looker-startup-options
+  namespace: '{{ .Release.Namespace }}'
+  labels:
+    {{- include "looker.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  lookerstart.cfg: |
+    LOOKERARGS="--no-ssl --shared-storage-dir={{ .Values.models.persistence.mountPath }}
+    {{- if .Values.mysql.enabled }}
+    -d looker-db.yml
+    {{- end}}
+    "

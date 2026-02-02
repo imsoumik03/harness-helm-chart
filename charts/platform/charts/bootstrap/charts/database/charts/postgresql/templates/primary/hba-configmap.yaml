@@ -1,0 +1,29 @@
+{{- /*
+Copyright Broadcom, Inc. All Rights Reserved.
+SPDX-License-Identifier: APACHE-2.0
+*/}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-hba-configuration" (include "postgresql.v1.primary.fullname" .) }}
+  namespace: {{ include "common.names.namespace" . | quote }}
+  labels: {{- include "common.labels.standard" ( dict "customLabels" .Values.commonLabels "context" $ ) | nindent 4 }}
+    app.kubernetes.io/component: primary
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  pg_hba.conf: |
+    {{- if .Values.tls.enabled }}
+    {{- include "postgresql.v1.hba.tls" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.ldap.enabled }}
+    {{- include "postgresql.v1.hba.ldap" . | nindent 4 }}
+    {{- end }}
+    {{- if and (not .Values.tls.enabled) (not .Values.ldap.enabled) }}
+    {{- include "postgresql.v1.hba.default" . | nindent 4 }}
+    {{- end }}
+    {{- if .Values.primary.pgHbaConfiguration }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.primary.pgHbaConfiguration "context" $ ) | nindent 4 }}
+    {{- end }}

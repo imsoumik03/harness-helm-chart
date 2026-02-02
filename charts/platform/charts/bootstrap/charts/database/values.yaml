@@ -1,0 +1,552 @@
+global:
+  security:
+    allowInsecureImages: false
+  database:
+    kafka:
+      enabled: false
+    clickhouse:
+      enabled: false
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              CLICKHOUSE_USERNAME: ""
+              CLICKHOUSE_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                CLICKHOUSE_USERNAME:
+                  name: ""
+                  property: ""
+                CLICKHOUSE_PASSWORD:
+                  name: ""
+                  property: ""
+    minio:
+      installed: true
+      provisioning:
+        enabled: false
+        buckets:
+          - name: "logs"
+            lifecycle:
+              - id: LogServiceRetentionPolicy
+                expiry:
+                  days: 360
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              S3_USER: ""
+              S3_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                S3_USER:
+                  name: ""
+                  property: ""
+                S3_PASSWORD:
+                  name: ""
+                  property: ""
+    mongo:
+      installed: true
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+              MONGO_REPLICA_SET_KEY: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+                MONGO_REPLICA_SET_KEY:
+                  name: ""
+                  property: ""
+    postgres:
+      installed: true
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    timescaledb:
+      installed: true
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              TIMESCALEDB_USERNAME: ""
+              TIMESCALEDB_PASSWORD: ""
+              TIMESCALEDB_SSL_ROOT_CERT: ""
+              TIMESCALEDB_REPLICATION_PASSWORD: ""
+              TIMESCALEDB_ADMIN_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                TIMESCALEDB_USERNAME:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_SSL_ROOT_CERT:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_REPLICATION_PASSWORD:
+                  name: ""
+                  property: ""
+                TIMESCALEDB_ADMIN_PASSWORD:
+                  name: ""
+                  property: ""
+      tsdbarchive:
+        installed: true
+        secrets:
+          kubernetesSecrets:
+            - secretName: ""
+              keys:
+                S3_USER: ""
+                S3_PASSWORD: ""
+          secretManagement:
+            externalSecretsOperator:
+              - secretStore:
+                  name: ""
+                  kind: ""
+                remoteKeys:
+                  S3_USER:
+                    name: ""
+                    property: ""
+                  S3_PASSWORD:
+                    name: ""
+                    property: ""
+    redis:
+      installed: true
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              CLICKHOUSE_USERNAME: ""
+              CLICKHOUSE_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                CLICKHOUSE_USERNAME:
+                  name: ""
+                  property: ""
+                CLICKHOUSE_PASSWORD:
+                  name: ""
+                  property: ""
+    elasticsearch:
+      installed: false
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              ELASTIC_SEARCH_API_KEY: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                ELASTIC_SEARCH_API_KEY:
+                  name: ""
+                  property: ""
+minio:
+  global:
+    security:
+      allowInsecureImages: true
+  fullnameOverride: "minio"
+  mode: standalone
+  defaultBuckets: "logs, sbom-store, policy-store, iro-thanos-store, metrics-store"
+  resources:
+    requests:
+      cpu: 2
+      memory: 512Mi
+    limits:
+      memory: 1024Mi
+  pdb:
+    create: false
+  persistence:
+    size: 200Gi
+    mountPath: /bitnami/minio/data
+  auth:
+    existingSecret: '{{ include "harnesscommon.secrets.InstalledDBSecret" (dict "ctx" $ "dbKey" "minio" "defaultSecret" "minio") }}'
+# MongoDB FCV upgrade configuration
+mongodbupgrades:
+  mongoFCVUpgrade:
+    enabled: true
+    ignoreFailure: true
+    affinity: {}
+    nodeSelector: {}
+    tolerations: []
+    # If you want to set a desired fcv then uncomment the below line and mention the fcv version.
+    #desiredFCV: "6.0"
+    resources: {}
+    # Number of seconds to keep the job after it finishes (default: 900 seconds / 15 minutes)
+    ttlSecondsAfterFinished: 900
+    image:
+      registry: docker.io
+      repository: harness/mongo
+      tag: 7.0.28-debian-12-r1
+  removeArbiter:
+    enabled: true
+    affinity: {}
+    nodeSelector: {}
+    tolerations: []
+    resources: {}
+    ttlSecondsAfterFinished: 900
+    image:
+      registry: docker.io
+      repository: harness/mongo
+      tag: 7.0.28-debian-12-r1
+mongodb:
+  architecture: replicaset
+  fullnameOverride: "mongodb-replicaset-chart"
+  image:
+    registry: docker.io
+    repository: harness/mongo
+    tag: 7.0.28-debian-12-r1
+  metrics:
+    image:
+      repository: harness/mongodb-exporter
+      tag: 0.40.0-debian-12-r40
+    livenessProbe:
+      timeoutSeconds: 10
+      periodSeconds: 15
+    readinessProbe:
+      timeoutSeconds: 10
+      periodSeconds: 15
+  replicaCount: 3
+  arbiter:
+    enabled: false
+  service:
+    nameOverride: "mongodb-replicaset-chart"
+  auth:
+    rootUser: "admin"
+    existingSecret: '{{ include "harnesscommon.secrets.InstalledDBSecret" (dict "ctx" $ "dbKey" "mongo" "defaultSecret" "mongodb-replicaset-chart") }}'
+  podLabels: { app: mongodb-replicaset }
+  resources:
+    limits:
+      cpu: 4
+      memory: 8192Mi
+    requests:
+      cpu: 4
+      memory: 8192Mi
+  persistence:
+    size: 200Gi
+postgresql:
+  fullnameOverride: "postgres"
+  auth:
+    # Create the additional ET Database during deployment.
+    # Additional init can be added using a configmap
+    # primary.initdb.scriptsConfigMap
+    database: overops
+    existingSecret: '{{ include "harnesscommon.secrets.InstalledDBSecret" (dict "ctx" $ "dbKey" "postgres" "defaultSecret" "postgres") }}'
+  serviceAccount:
+    create: true
+    name: "postgres"
+
+  commonLabels:
+    app: postgres
+  primary:
+    initdb:
+      scripts:
+        create-databases.sql: |
+          SELECT 'CREATE DATABASE "harness"'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'harness')\gexec
+          SELECT 'CREATE DATABASE "harnessti"'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'harnessti')\gexec
+          SELECT 'CREATE DATABASE "harness_gitops"'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'harness_gitops')\gexec
+          SELECT 'CREATE DATABASE "harnesscf"'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'harnesscf')\gexec
+          SELECT 'CREATE DATABASE "iro_db"'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'iro_db')\gexec
+          SELECT 'CREATE DATABASE "batch_ccm"'
+          WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'batch_ccm')\gexec
+    persistence:
+      size: 200Gi
+    resources:
+      limits:
+        cpu: 4
+        memory: 8192Mi
+      requests:
+        cpu: 4
+        memory: 8192Mi
+timescaledb:
+  secrets:
+    credentialsSecretName: '{{ include "harnesscommon.secrets.InstalledDBSecret" (dict "ctx" $ "dbKey" "timescaledb" "defaultSecret" "harness-secrets") }}'
+elasticsearch:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/elasticsearch
+  fullnameOverride: "elasticsearch"
+clickhouse:
+  fullnameOverride: "clickhouse"
+  auth:
+    existingSecret: "clickhouse"
+    existingSecretKey: "admin-password"
+  image:
+    registry: docker.io
+    repository: harness/clickhouse
+    tag: 24.12.4-debian-12-r1
+  podLabels: { app: clickhouse }
+  resources:
+    limits:
+      memory: "16Gi"
+    requests:
+      cpu: 12
+      memory: "16Gi"
+  persistence:
+    size: 1Ti
+  defaultConfigurationOverrides: |
+    <clickhouse>
+      <!-- Macros -->
+      <macros>
+        <shard from_env="CLICKHOUSE_SHARD_ID"></shard>
+        <replica from_env="CLICKHOUSE_REPLICA_ID"></replica>
+        <layer>{{ include "common.names.fullname" . }}</layer>
+      </macros>
+      <!-- Log Level -->
+      <logger>
+        <level>{{ .Values.logLevel }}</level>
+      </logger>
+      {{- if or (ne (int .Values.shards) 1) (ne (int .Values.replicaCount) 1)}}
+      <!-- Cluster configuration - Any update of the shards and replicas requires helm upgrade -->
+      <remote_servers>
+        <default>
+          {{- $shards := $.Values.shards | int }}
+          {{- range $shard, $e := until $shards }}
+          <shard>
+              <internal_replication>false</internal_replication>
+              {{- $replicas := $.Values.replicaCount | int }}
+              {{- range $i, $_e := until $replicas }}
+              <replica>
+                  <host>{{ printf "%s-shard%d-%d.%s.%s.svc.%s" (include "common.names.fullname" $ ) $shard $i (include "clickhouse.headlessServiceName" $) (include "common.names.namespace" $) $.Values.clusterDomain }}</host>
+                  <port>{{ $.Values.service.ports.tcp }}</port>
+              </replica>
+              {{- end }}
+          </shard>
+          {{- end }}
+        </default>
+      </remote_servers>
+      {{- end }}
+      {{- if .Values.keeper.enabled }}
+      <!-- keeper configuration -->
+      <keeper_server>
+        {{/*ClickHouse keeper configuration using the helm chart */}}
+        <tcp_port>{{ $.Values.containerPorts.keeper }}</tcp_port>
+        {{- if .Values.tls.enabled }}
+        <tcp_port_secure>{{ $.Values.containerPorts.keeperSecure }}</tcp_port_secure>
+        {{- end }}
+        <server_id from_env="KEEPER_SERVER_ID"></server_id>
+        <log_storage_path>/bitnami/clickhouse/keeper/coordination/log</log_storage_path>
+        <snapshot_storage_path>/bitnami/clickhouse/keeper/coordination/snapshots</snapshot_storage_path>
+
+        <coordination_settings>
+            <operation_timeout_ms>10000</operation_timeout_ms>
+            <session_timeout_ms>30000</session_timeout_ms>
+            <raft_logs_level>trace</raft_logs_level>
+        </coordination_settings>
+
+        <raft_configuration>
+        {{- $nodes := .Values.replicaCount | int }}
+        {{- range $node, $e := until $nodes }}
+        <server>
+          <id>{{ $node | int }}</id>
+          <hostname from_env="{{ printf "KEEPER_NODE_%d" $node }}"></hostname>
+          <port>{{ $.Values.service.ports.keeperInter }}</port>
+        </server>
+        {{- end }}
+        </raft_configuration>
+      </keeper_server>
+      {{- end }}
+      {{- if or .Values.keeper.enabled .Values.zookeeper.enabled .Values.externalZookeeper.servers }}
+      <!-- Zookeeper configuration -->
+      <zookeeper>
+        {{- if or .Values.keeper.enabled }}
+        {{- $nodes := .Values.replicaCount | int }}
+        {{- range $node, $e := until $nodes }}
+        <node>
+          <host from_env="{{ printf "KEEPER_NODE_%d" $node }}"></host>
+          <port>{{ $.Values.service.ports.keeper }}</port>
+        </node>
+        {{- end }}
+        {{- else if .Values.zookeeper.enabled }}
+        {{/* Zookeeper configuration using the helm chart */}}
+        {{- $nodes := .Values.zookeeper.replicaCount | int }}
+        {{- range $node, $e := until $nodes }}
+        <node>
+          <host from_env="{{ printf "KEEPER_NODE_%d" $node }}"></host>
+          <port>{{ $.Values.zookeeper.service.ports.client }}</port>
+        </node>
+        {{- end }}
+        {{- else if .Values.externalZookeeper.servers }}
+        {{/* Zookeeper configuration using an external instance */}}
+        {{- range $node :=.Values.externalZookeeper.servers }}
+        <node>
+          <host>{{ $node }}</host>
+          <port>{{ $.Values.externalZookeeper.port }}</port>
+        </node>
+        {{- end }}
+        {{- end }}
+      </zookeeper>
+      {{- end }}
+      {{- if .Values.tls.enabled }}
+      <!-- TLS configuration -->
+      <tcp_port_secure from_env="CLICKHOUSE_TCP_SECURE_PORT"></tcp_port_secure>
+      <openSSL>
+          <server>
+              {{- $certFileName := default "tls.crt" .Values.tls.certFilename }}
+              {{- $keyFileName := default "tls.key" .Values.tls.certKeyFilename }}
+              <certificateFile>/bitnami/clickhouse/certs/{{$certFileName}}</certificateFile>
+              <privateKeyFile>/bitnami/clickhouse/certs/{{$keyFileName}}</privateKeyFile>
+              <verificationMode>none</verificationMode>
+              <cacheSessions>true</cacheSessions>
+              <disableProtocols>sslv2,sslv3</disableProtocols>
+              <preferServerCiphers>true</preferServerCiphers>
+              {{- if or .Values.tls.autoGenerated .Values.tls.certCAFilename }}
+              {{- $caFileName := default "ca.crt" .Values.tls.certFilename }}
+              <caConfig>/bitnami/clickhouse/certs/{{$caFileName}}</caConfig>
+              {{- else }}
+              <loadDefaultCAFile>true</loadDefaultCAFile>
+              {{- end }}
+          </server>
+          <client>
+              <loadDefaultCAFile>true</loadDefaultCAFile>
+              <cacheSessions>true</cacheSessions>
+              <disableProtocols>sslv2,sslv3</disableProtocols>
+              <preferServerCiphers>true</preferServerCiphers>
+              <verificationMode>none</verificationMode>
+              <invalidCertificateHandler>
+                  <name>AcceptCertificateHandler</name>
+              </invalidCertificateHandler>
+          </client>
+      </openSSL>
+      {{- end }}
+      {{- if .Values.metrics.enabled }}
+      <!-- Prometheus metrics -->
+      <prometheus>
+          <endpoint>/metrics</endpoint>
+          <port from_env="CLICKHOUSE_METRICS_PORT"></port>
+          <metrics>true</metrics>
+          <events>true</events>
+          <asynchronous_metrics>true</asynchronous_metrics>
+      </prometheus>
+      {{- end }}
+    </clickhouse>
+  replicaCount: 1
+  shards: 1
+  zookeeper:
+    enabled: false
+    fullnameOverride: "clickhouse-zookeeper"
+    replicaCount: 1
+
+kafka:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/kafka
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 250m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 500Mi
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 50Gi
+  listeners:
+    client:
+      protocol: PLAINTEXT
+      port: 9092
+      type: internal
+  broker:
+    enabled: true
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 1
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+    readinessProbe:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 6
+      successThreshold: 1
+      tcpSocket:
+        port: broker
+    livenessProbe:
+      initialDelaySeconds: 60
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+      successThreshold: 1
+      exec:
+        command:
+          - pgrep
+          - -f
+          - kafka
+  kraft:
+    enabled: true
+    clusterId: "$(uuidgen)"
+    controllerIds:
+      - "0"
+  controller:
+    enabled: true
+    replicaCount: 1
+    resources:
+      limits:
+        cpu: 1
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi

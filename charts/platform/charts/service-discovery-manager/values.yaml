@@ -1,0 +1,498 @@
+# Default values for service-discovery-manager
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  loadbalancerURL: "test@harness.io"
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    enabled: false
+    loadBalancerIP: '0.0.0.0'
+    className: "harness"
+    loadBalancerEnabled: true
+    hosts:
+      - ''
+    tls:
+      enabled: false
+      secretName: harness-ssl
+    nginx:
+      # -- Create Nginx Controller.  True will deploy a controller into your cluster
+      create: true
+    defaultbackend:
+      # -- Create will deploy a default backend into your cluster
+      create: true
+    objects:
+      annotations: {}
+  monitoring:
+    enabled: false
+    managedPlatform: ""
+  externalSecretsLoader:
+    enabled: false
+    provider: "vault"
+    image:
+      repository: "repo/image"
+      tag: "tag"
+      pullPolicy: "IfNotPresent"
+    vault:
+      address: ""
+      engine: ""
+      basePath: ""
+      auth:
+        method: "token"
+        # For Token auth:
+        token: "vault-token"
+        # For AppRole:
+        roleId: ""
+        secretId: ""
+        # For Kubernetes auth:
+        role: ""
+    databases:
+      mongo:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      redis:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        overridePath: ""
+        databaseRole: ""
+      postgres:
+        useDatabaseSecretsEngine: false
+        engine: ""
+        basePath: ""
+        databaseRole: ""
+  database:
+    mongo:
+      # -- set false to configure external mongo and generate mongo uri protocol://hosts?extraArgs
+      installed: true
+      # --   set the mongo hosts if mongo.installed is set to false
+      hosts: [""]
+      # -- provide the passwordKey to reference mongo password
+      passwordKey: "mongo-test-pass"
+      # -- set the protocol for mongo uri
+      protocol: mongodb
+      # -- provide the secretname to reference mongo username and password
+      secretName: "test"
+      # -- provide the userKey to reference mongo username
+      userKey: "pass"
+      # -- set additional arguments to mongo uri
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      ## - set this to false if you want to use external redis cluster
+      installed: true
+      # --  provide host name for redis
+      hosts:
+        - "redis-url"
+      ## - key within secret containing password
+      passwordKey: "password"
+      ## - secret name containing external redis credentials
+      secretName: "redis-user-pass"
+      ## - key within secret containing username
+      userKey: "username"
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+      - '*'
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts:
+        - ''
+      gateways: []
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+monitoring:
+  port: 8889
+  path: /metrics
+## Platform Settings
+platform:
+  harness-manager:
+    featureFlags:
+      ADDITIONAL: "PL_DISCOVERY_ENABLE"
+image:
+  registry: docker.io
+  repository: harness/smp-service-discovery-server-signed
+  tag: 0.52.3
+  digest: ""
+  pullPolicy: Always
+  # pullSecrets: ["regcred-secret"]
+collectorImage:
+  image:
+    registry: docker.io
+    repository: harness/service-discovery-collector
+    tag: 0.52.1
+    digest: ""
+logWatcherImage:
+  image:
+    registry: docker.io
+    repository: harness/chaos-log-watcher
+    tag: 1.72.1
+    digest: ""
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+    name: mongodb-replicaset-chart
+    key: mongodb-root-password
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: harness-default
+virtualService:
+  annotations: {}
+  objects:
+    - name: service-discovery-manager
+      pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/servicediscovery/'
+ingress:
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/servicediscovery(/|$)(.*)'
+          backend:
+            service:
+              name: service-discovery-manager
+        - path: '/servicediscovery(/|$)(.*)'
+          backend:
+            service:
+              name: service-discovery-manager
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchExpressions:
+            - key: app
+              operator: In
+              values:
+                - service-discovery-manager
+        topologyKey: kubernetes.io/hostname
+lifecycleHooks: {}
+# lifecycleHooks:
+#   postStart:
+#     exec:
+#       command:
+#   preStop:
+#     exec:
+#       command:
+
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 8080
+  targetport: 8080
+replicaCount: 1
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+progressDeadlineSeconds: 600
+podAnnotations: {}
+podLabels: {}
+podSecurityContext:
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+securityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+resources:
+  limits:
+    memory: 512Mi
+  requests:
+    cpu: 600m
+    memory: 512Mi
+extraVolumes:
+extraVolumeMounts:
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+database:
+  mongo:
+    servicediscovery:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+    cache:
+      enabled: false
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+                REDIS_CA:
+                  name: ""
+                  property: ""
+                REDIS_SSL_CA_TRUST_STORE_PASSWORD:
+                  name: ""
+                  property: ""
+secrets:
+  default:
+    SERVICE_DISCOVERY_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    NG_JWT_SECRET: IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM
+    JWT_SECRET: dOkdsVqdRPPRJG31XU0qY4MPqmBBMk0PTAGIKM6O7TGqhjyxScIdJe80mwh5Yb5zF3KxYBHw6B3Lfzlq
+    ACL_JWT_SECRET: HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU=
+    LOG_SERVICE_SECRET: c76e567a-b341-404d-a8dd-d9738714eb82
+    FF_SDK_KEY: ""
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        SERVICE_DISCOVERY_JWT_SECRET: ""
+        NG_JWT_SECRET: ""
+        JWT_SECRET: ""
+        ACL_JWT_SECRET: ""
+        LOG_SERVICE_SECRET: ""
+        FF_SDK_KEY: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          SERVICE_DISCOVERY_JWT_SECRET:
+            name: ""
+            property: ""
+          NG_JWT_SECRET:
+            name: ""
+            property: ""
+          JWT_SECRET:
+            name: ""
+            property: ""
+          ACL_JWT_SECRET:
+            name: ""
+            property: ""
+          LOG_SERVICE_SECRET:
+            name: ""
+            property: ""
+          FF_SDK_KEY:
+            name: ""
+            property: ""
+config:
+  USE_LEGACY_FEATURE_FLAGS: "true"
+  CHAOS_DISCOVERY_CUSTOM_SERVICES: "false"
+  REDIS_LOCK_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "cache") }}'
+  REDIS_LOCK_DATABASE: "0"
+  REDIS_LOCK_NAMESPACE: ""
+  REDIS_EVENT_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  REDIS_EVENT_DATABASE: "0"
+  REDIS_EVENT_NAMESPACE: ""
+  REDIS_STREAM_ENV: ""
+  ENTITY_CRUD_REDIS_STREAM: entity_crud
+  DISCOVERY_CRUD_REDIS_STREAM: discovery_crud
+  MONGO_DB_NAME: "service-discovery"
+  LOG_WATCHER_IMAGE: '{{ include "service-discovery-manager.logWatcherImage" . }}'
+  COLLECTOR_IMAGE: '{{ include "service-discovery-manager.collectorImage" . }}'
+  AUDIT_PROCESSOR_GO_ROUTINE_COUNT: "10"
+  FF_CLIENT_CONFIG_URL: ""
+  FF_CLIENT_EVENT_URL: ""
+  config.yaml: |
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.appConfig.general "context" $) | nindent 2}}
+    acl:
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.appConfig.acl "context" $) | nindent 4}}
+    log:
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.appConfig.log "context" $) | nindent 4}}
+    agent:
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.agent "context" $) | nindent 4}}
+    metrics:
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.appConfig.metrics "context" $) | nindent 4}}
+    pprof:
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.appConfig.pprof "context" $) | nindent 4}}
+    swagger:
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.configfile.appConfig.swagger "context" $) | nindent 4}}
+configfile:
+  appConfig:
+    general:
+      address: ":8080"
+      serverURL: '{{ .Values.global.loadbalancerURL }}/gateway/servicediscovery'
+      ngManagerEndpoint: http://ng-manager:7090
+      platformServiceEndpoint: http://platform-service:9005/api
+      enableHarnessServiceMapping: false
+    acl:
+      endpoint: http://access-control:9006/api
+      insecureSkipVerify: true
+    log:
+      externalEndpoint: '{{ .Values.global.loadbalancerURL }}/gateway/log-service'
+      internalEndpoint: http://log-service:8079
+      insecureSkipVerify: true
+      indirectUpload: false
+    metrics:
+      enabled: true
+      authenticated: false
+    pprof:
+      enabled: true
+      authenticated: false
+    swagger:
+      enabled: true
+      authenticated: false
+  agent:
+    imagePullPolicy: Always
+rbac:
+  rules: []
+pdb:
+  create: false
+probes:
+  livenessProbe:
+    httpGet:
+      scheme: HTTP
+      path: /status
+      port: 8080
+    initialDelaySeconds: 120
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 1
+  readinessProbe:
+    httpGet:
+      scheme: HTTP
+      path: /status
+      port: 8080
+    initialDelaySeconds: 120
+    periodSeconds: 5
+    successThreshold: 1
+    timeoutSeconds: 1

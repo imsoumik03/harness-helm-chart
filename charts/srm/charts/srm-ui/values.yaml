@@ -1,0 +1,124 @@
+# Default values for srm-ui.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+probes:
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: srm-ui-port
+    initialDelaySeconds: 15
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: srm-ui-port
+    initialDelaySeconds: 100
+    periodSeconds: 20
+    failureThreshold: 2
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  loadbalancerURL: 'https://test'
+  ingress:
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts: []
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+  istio:
+    enabled: false
+    gateway:
+      create: false
+    virtualService:
+      gateways:
+      hosts:
+  # image pull secrets to use for every image
+  imagePullSecrets: []
+replicaCount: 1
+progressDeadlineSeconds: 600
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+terminationGracePeriodSeconds: 30
+virtualService:
+  annotations: {}
+  objects:
+    - pathMatchType: prefix
+      pathRewrite: '/'
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/srmui/'
+          backend:
+            service:
+              name: srm-ui-service
+image:
+  registry: docker.io
+  repository: harness/srm-ui-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: '1.15.0'
+  digest: ''
+  # image pull secrets to use for srm-ui image
+  imagePullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+serviceAccount:
+  create: false
+  annotations: {}
+  name: 'harness-default'
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+service:
+  type: ClusterIP
+  port: 80
+  portName: srm-ui-port
+ingress:
+  className: nginx
+  objects:
+    - name: srm-ui-ingress
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/srmui(/|$)(.*)'
+          pathType: Prefix
+          backend:
+            service:
+              port: 80
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+resources:
+  limits:
+    memory: '250M'
+  requests:
+    cpu: '25m'
+    memory: '250M'
+extraVolumes: []
+extraVolumeMounts: []
+lifecycleHooks: {}
+pdb:
+  create: false
+config:
+  ENABLE_CDN: "false"

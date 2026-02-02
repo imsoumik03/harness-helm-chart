@@ -1,0 +1,2 @@
+{{- include "harnesscommon.v1.renderIngress" (dict "ctx" $) }}
+

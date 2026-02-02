@@ -1,0 +1,56 @@
+{{- /*
+This CronJob runs the archive cleanup script for TimescaleDB
+*/ -}}
+{{- if .Values.archiveCleanup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: '{{ template "timescaledb.fullname" . }}-archive-cleanup'
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/component: archivecleanup
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: "{{ .Values.archiveCleanup.schedule }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: archivecleanup
+        spec:
+          {{- include "timescaledb.archivePullSecrets" . | nindent 10 }}
+          restartPolicy: OnFailure
+          containers:
+          - name: archivecleanup
+            image: {{ include "common.images.image" (dict "imageRoot" .Values.archiveCleanup.image "global" .Values.global) }}
+            imagePullPolicy: {{ .Values.archiveCleanup.image.pullPolicy }}
+            command:
+            - /bin/bash
+            - -c
+            - |
+              {{- if .Values.global.istio.enabled }}
+              /scripts/archive_cleanup.sh && curl -s -X POST http://localhost:15000/quitquitquit || echo "Failed to terminate Istio proxy"
+              {{- else }}
+              /scripts/archive_cleanup.sh
+              {{- end }}
+            env: {{- toYaml .Values.archiveCleanup.env | nindent 12 }}
+            resources:
+{{ toYaml .Values.archiveCleanup.resources | indent 14 }}
+            volumeMounts:
+            - name: archivecleanup-script
+              mountPath: /scripts
+          volumes:
+          - name: archivecleanup-script
+            configMap:
+              name: {{ template "timescaledb.fullname" . }}-archivecleanup
+              defaultMode: 0755
+{{- end }}

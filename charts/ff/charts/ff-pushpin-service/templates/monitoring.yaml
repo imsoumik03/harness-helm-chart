@@ -1,0 +1,26 @@
+{{- $name := include "ff-pushpin-service.name" . -}}
+{{- $enabled := and $.Values.global.monitoring.enabled (eq $.Values.global.monitoring.managedPlatform "google") -}}
+
+{{- if $enabled -}}
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: {{ include "ff-pushpin-service.name" . }}
+  labels:
+    {{- include "ff-pushpin-service.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ff-pushpin-service.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: 5000
+      interval: 120s
+      path: /metrics
+    - port: 9000
+      interval: 120s
+      path: /metrics
+{{- end }}

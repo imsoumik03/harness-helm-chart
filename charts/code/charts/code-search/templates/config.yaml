@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "codesearch.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.additionalConfig "context" $) | nindent 2}}
+  CODESEARCH_TRACE: {{ .Values.config.CODESEARCH_TRACE | quote }}
+  CODESEARCH_DEBUG: {{ .Values.config.CODESEARCH_DEBUG | quote }}
+  CODESEARCH_PROFILER_TYPE: {{ .Values.config.CODESEARCH_PROFILER_TYPE | quote }}
+  CODESEARCH_PROFILER_SERVICE_NAME: {{.Values.config.CODESEARCH_PROFILER_SERVICE_NAME | quote}}
+  CODESEARCH_SERVER_GRACEFUL_SHUTDOWN_TIME: {{ int .Values.config.CODESEARCH_SERVER_GRACEFUL_SHUTDOWN_TIME | printf "%ds"  | quote}}
+  CODESEARCH_HTTP_PORT: {{ .Values.config.CODESEARCH_HTTP_PORT | quote }}
+  CODESEARCH_DIR_INDEX: {{ .Values.config.CODESEARCH_DIR_INDEX | quote }}
+  CODESEARCH_DIR_REPO: {{ .Values.config.CODESEARCH_DIR_REPO | quote }}
+  CODESEARCH_DIR_CLEANUP: {{ .Values.config.CODESEARCH_DIR_CLEANUP | quote }}
+  CODESEARCH_SCHEDULER_INTERVAL: {{ .Values.config.CODESEARCH_SCHEDULER_INTERVAL | quote }}
+  CODESEARCH_SCHEDULER_CLEANUP_INTERVAL: {{ .Values.config.CODESEARCH_SCHEDULER_CLEANUP_INTERVAL | quote }}
+  CODESEARCH_SCHEDULER_POOL_SIZE: {{ .Values.config.CODESEARCH_SCHEDULER_POOL_SIZE | quote }}
+  CODESEARCH_OWNERSHIP_REPLICATION_FACTOR: {{ .Values.config.CODESEARCH_OWNERSHIP_REPLICATION_FACTOR | quote }}
+  CODESEARCH_NODES_CONFIG_PATH: {{ .Values.config.CODESEARCH_NODES_CONFIG_PATH | quote }}
+  HARNESS_SERVICES_CODE_API_CLIENT_BASEURL: http://code-api.{{ .Release.Namespace }}.svc.cluster.local
+  HARNESS_SERVICES_CODE_API_JWT_IDENTITY: {{ .Values.config.CODESEARCH_CODE_API_JWT_IDENTITY | quote }}
+  CODESEARCH_DATABASE_DRIVER: {{ .Values.config.CODESEARCH_DATABASE_DRIVER | quote }}
+  CODESEARCH_FILE_SIZE_MAX: {{ .Values.config.CODESEARCH_FILE_SIZE_MAX | quote }}
+  CODESEARCH_TRIGRAM_COUNT_MAX: {{ .Values.config.CODESEARCH_TRIGRAM_COUNT_MAX | quote }}

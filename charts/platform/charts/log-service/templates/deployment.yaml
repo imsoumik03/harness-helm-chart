@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: log-service
+    {{- include "log-service.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "log-service.selectorLabels" . | nindent 6 }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- if or .Values.global.commonAnnotations .Values.podAnnotations }}
+      annotations:
+        {{- include "harnesscommon.monitoring.annotations" . | nindent 8 }}
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      labels:
+        app: log-service
+        {{- include "log-service.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{ include "log-service.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "log-service.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
+      initContainers:
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{ include "harnesscommon.initContainer.setupWritable" (dict "root" . "destinationPath" "/shared/volume" "sourcePath" "/usr/local/bin" "volumeName" "usr-local-bin") | nindent 8 }}
+        {{- end }}
+      containers:
+      - name: log-service
+        envFrom:
+        - configMapRef:
+            name: log-service
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10}}
+          {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "logservice" "userVariableName" "LOG_SERVICE_REDIS_USERNAME" "passwordVariableName" "LOG_SERVICE_REDIS_PASSWORD" ) | indent 10 }}
+          {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "logservice" "variableNames" ( dict "sslEnabled" "LOG_SERVICE_REDIS_SSL_ENABLED"  "sslCACertPath" "LOG_SERVICE_REDIS_SSL_CA_CERT_PATH")) | indent 10 }}
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if .Values.securityContext }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        {{- end }}
+        ports:
+          {{- include "harnesscommon.monitoring.containerPort" . | nindent 10 }}
+          - name: http-log-svc
+            containerPort: {{ .Values.service.port }}
+            protocol: "TCP"
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.lifecycleHooks }}
+        lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 10 }}
+        {{- end }}
+        {{- toYaml .Values.probes | nindent 8 }}
+        {{- if .Values.terminationMessage }}
+          {{- toYaml .Values.terminationMessage | nindent 8 }}
+        {{- end }}
+        volumeMounts:
+          {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+            {{- include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "usr-local-bin" "mountPath" "/usr/local/bin") (dict "name" "tmp" "mountPath" "/tmp")) ) | nindent 10 }}
+          {{- end }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 10 }}
+          {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "logservice") | nindent 10 }}
+            {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
+          {{- end }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - log-service
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{- include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "usr-local-bin" "type" "emptyDir") (dict "name" "tmp" "type" "emptyDir")) ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "logservice") | indent 8 }}

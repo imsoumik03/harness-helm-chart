@@ -1,0 +1,34 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ff-pushpin-service.name" . }}
+  labels:
+    {{- include "ff-pushpin-service.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ff-pushpin-service.name" . }}-worker
+  labels:
+    {{- include "ff-pushpin-service.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- if .Values.global.cfPostgresEnabled }}
+  DB_HOST: {{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" $) }}
+  DB_PORT: {{ include "harnesscommon.dbconnectionv2.postgresPort" (dict "context" $) | default 5432 | quote }}
+  SSL_MODE: {{ include "postgresSSLMode" (dict "context" $) }}
+  {{- else }}
+  DB_HOST: {{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}
+  DB_PORT: {{ include "harnesscommon.dbconnectionv2.timescalePort" (dict "context" $) | default "5432" | quote }}
+  SSL_MODE: {{ include "timescaleSSLMode" (dict "context" $) }}
+  {{- end }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.workerConfig "context" $) | nindent 2}}

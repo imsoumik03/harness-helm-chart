@@ -1,0 +1,132 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ng-dashboard-aggregator
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ng-dashboard-aggregator.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.progressDeadlineSeconds }}
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  {{- end }}
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  {{- if .Values.updateStrategy }}
+  strategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ng-dashboard-aggregator.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        app: ng-dashboard-aggregator
+        {{- include "ng-dashboard-aggregator.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "ng-dashboard-aggregator.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ng-dashboard-aggregator.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- include "harnesscommon.secretsLoader.initContainer" (dict "ctx" $) | nindent 8 }}
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{ include "harnesscommon.initContainer.setupWritable" (dict "root" . "destinationPath" "/shared/volume" "sourcePath" "/opt/harness" "volumeName" "harness-opt") | nindent 8 }}
+        {{- end }}
+      terminationGracePeriodSeconds: 180
+      containers:
+      - name: ng-dashboard-aggregator
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "true" }}
+        args: {{- include "harnesscommon.secretsLoader.args" (dict "ctx" $) | nindent 12 }}
+        {{- end }}          
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        ports:
+        - name: dashbrd-port
+          containerPort: {{ .Values.service.port }}
+          protocol: "TCP"
+        {{- if .Values.terminationMessage }}
+            {{- toYaml .Values.terminationMessage | nindent 8 }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+        env:
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10}}
+          {{- end }}
+          - name: CONTAINER_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        envFrom:
+        - configMapRef:
+            name: ng-dashboard-aggregator
+        {{- if .Values.lifecycleHooks }}
+        lifecycle:
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 12 }}
+        {{- end }}
+        volumeMounts:
+          {{- include "harnesscommon.secretsLoader.volumeMounts" (dict "ctx" $) | nindent 12 }}
+          {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12}}
+          {{- end }}
+          {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{- include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "harness-opt" "mountPath" "/opt/harness") (dict "name" "tmp" "mountPath" "/tmp")) ) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts }}
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+          {{- end }}
+      {{- toYaml .Values.probes | nindent 8}}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - ng-dashboard-aggregator
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- include "harnesscommon.secretsLoader.volumes" (dict "ctx" $) | nindent 8 }}
+        {{- if eq (include "harnesscommon.secretsLoader.enabled" (dict "ctx" $)) "false" }}
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+        {{- end }}
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+        {{- include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "harness-opt" "type" "emptyDir") (dict "name" "tmp" "type" "emptyDir")) ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}

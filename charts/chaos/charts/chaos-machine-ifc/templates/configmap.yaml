@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chaos-machine-ifc-config
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "chaos-machine-ifc.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}
+  {{- include "harnesscommon.secretsLoader.configContent" (dict "ctx" $ "databaseSecrets" (list 
+    (dict "dbtype" "redis" "usernamesecrets" (list "REDIS_CACHE_USERNAME") "passwordsecrets" (list "REDIS_CACHE_PASSWORD"))
+  )) | nindent 2}}

@@ -1,0 +1,192 @@
+{{- if .Values.nginx.create -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: harness-ingress-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.nginx.service.annotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.nginx.service.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.global.commonAnnotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.nginx.controller.annotations }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.nginx.controller.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    app: harness-ingress-controller
+  {{- if or .Values.global.globalIngress.enabled .Values.nginx.clusterIPEnabled }}
+  type: 'ClusterIP'
+  {{- if not (empty .Values.nginx.clusterIP) }}
+  clusterIP: {{ .Values.nginx.clusterIP }}
+  {{- end }}
+  {{- else if .Values.nginx.loadBalancerEnabled }}
+  type: 'LoadBalancer'
+  {{- if not (empty .Values.nginx.loadBalancerIP) }}
+  loadBalancerIP: {{ .Values.nginx.loadBalancerIP }}
+  {{- end }}
+  {{- else }}
+  type: 'NodePort'
+  {{- end }}
+  # externalTrafficPolicy: 'Cluster'
+  ports:
+  - name: health
+    protocol: TCP
+    port: {{ .Values.nginx.healthPort | default 10254 }}
+    targetPort: {{ .Values.nginx.healthPort | default 10254 }}
+    {{- if .Values.nginx.healthNodePort }}
+    nodePort: {{ .Values.nginx.healthNodePort }}
+    {{- end }}
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: http
+    {{- if .Values.nginx.httpNodePort }}
+    nodePort: {{ .Values.nginx.httpNodePort }}
+    {{- end }}
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: https
+    {{- if .Values.nginx.httpsNodePort }}
+    nodePort: {{ .Values.nginx.httpsNodePort }}
+    {{- end }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: harness-ingress-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.nginx.controller.config "context" $) | nindent 2}}
+  
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: harness-ingress-controller
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.nginx.autoscaling.enabled }}
+  replicas: {{ .Values.nginx.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: harness-ingress-controller
+  progressDeadlineSeconds: {{.Values.nginx.controller.progressDeadlineSeconds }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: "harness-ingress-controller"
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.nginx.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.nginx.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: "harness-ingress-controller"
+              topologyKey: kubernetes.io/hostname
+      {{- with .Values.nginx.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nginx.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nginx.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- include "common.images.pullSecrets" (dict "images" (list .Values.nginx.image) "global" .Values.global ) | nindent 6 }}
+      serviceAccountName: harness-serviceaccount
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsUser: 101
+      containers:
+      - image: {{ include "common.images.image" (dict "imageRoot" .Values.nginx.image "global" .Values.global) }}
+        name: nginx-ingress-controller
+        imagePullPolicy: IfNotPresent
+        envFrom:
+        - configMapRef:
+            name: harness-ingress-controller
+        resources:
+          {{- toYaml .Values.nginx.resources | nindent 10 }}
+        {{- if .Values.nginx.controller.terminationMessage }}
+        terminationMessagePath: {{.Values.nginx.controller.terminationMessage.Path}}
+        terminationMessagePolicy: {{.Values.nginx.controller.terminationMessage.Policy}}
+        {{- end }}
+        ports:
+          - name: http
+            containerPort: {{ .Values.nginx.controller.httpPort }}
+            protocol: TCP
+          - name: https
+            containerPort: {{ .Values.nginx.controller.httpsPort }}
+            protocol: TCP
+          {{- if .Values.nginx.controller.metrics.enabled }}
+          - containerPort: {{ .Values.nginx.controller.metrics.port }}
+            name: metrics
+            protocol: TCP
+          {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.nginx.healthPort | default 10254 }}
+            scheme: HTTP
+          {{- toYaml .Values.nginx.controller.livenessProbe.optional | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.nginx.healthPort | default 10254 }}
+            scheme: HTTP
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 2
+          successThreshold: 1
+          failureThreshold: 3
+        securityContext:
+          allowPrivilegeEscalation: false
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+        args:
+          {{- include "nginx.args" . | indent 10 }}
+{{- end }}

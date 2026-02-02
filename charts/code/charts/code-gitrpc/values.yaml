@@ -1,0 +1,204 @@
+global:
+  loadbalancerURL: "https://test"
+  ingress:
+    bodySize: 1024m
+    readTimeout: 300
+    className: harness
+  storageClass: ""
+  storageClassName: ""
+  database:
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: Always
+      tag: "latest"
+      digest: ""
+  imagePullSecrets: []
+pvname: code-gitrpc
+instances: 3
+nameOverride: ""
+fullnameOverride: ""
+image:
+  registry: docker.io
+  repository: harness/code-gitrpc-signed
+  pullPolicy: IfNotPresent
+  tag: "1.71.1"
+  digest: ""
+  imagePullSecrets: []
+config:
+  CODE_TRACE: false
+  CODE_DEBUG: false
+  CODE_GITRPC_SERVER_GIT_TRACE: true
+  CODE_PROFILER_TYPE: "GCP"
+  CODE_PROFILER_SERVICE_NAME: "code-gitrpc"
+  CODE_GITRPC_PV_STORAGE: 10Gi
+  mountPath: /app/data
+  CODE_GIT_ROOT: "/app/data"
+  CODE_SERVER_GRACEFUL_SHUTDOWN_TIME: 300
+  CODE_GITRPC_SERVER_PORT: 3001
+  CODE_GITRPC_SERVER_HTTP_PORT: 4001
+  CODE_GITRPC_SERVER_MAX_CONN_AGE: "630720000s" # githa <> gitrpc grpc conn could be kept alive
+  CODE_GITRPC_SERVER_MAX_CONN_AGE_GRACE: "630720000s"
+additionalConfig:
+  GITRPC_REDIS_SENTINEL_MASTER: "harness-redis"
+  GITRPC_PACK_OBJECTS_CACHE_ENABLED: "false"
+  GITRPC_PACK_OBJECTS_CACHE_DIR: "/mnt/cache"
+  GITRPC_PACK_OBJECTS_CACHE_DISK_SIZE: 10Gi
+redis:
+  protocol: ""
+  hosts: []
+  secretName: ""
+  userKey: ""
+  passwordKey: ""
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+database:
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    code-gitrpc:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+nodeLabel:
+  key: ""
+  value: ""
+secret:
+harnessDisks:
+  disks: []
+resources:
+  limits:
+    memory: "1Gi"
+  requests:
+    cpu: "1024m"
+    memory: "1Gi"
+serviceAccount:
+  create: false
+  annotations: {}
+  name: "harness-default"
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+additionalConfigs: {}
+postgres:
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: "14.18.0-debian-12-r0"
+    digest: ""
+    imagePullSecrets: []
+busybox:
+  image:
+    registry: docker.io
+    repository: busybox
+    pullPolicy: IfNotPresent
+    tag: "1.37.0"
+    digest: ""
+    imagePullSecrets: []

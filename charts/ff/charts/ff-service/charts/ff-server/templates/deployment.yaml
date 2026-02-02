@@ -1,0 +1,146 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ff-server.name" . }}
+  labels:
+    {{- include "ff-server.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not .Values.autoscalingEnabled }}
+  replicas: {{.Values.replicas}}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ff-server.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.maxSurge }}
+      maxUnavailable: {{ .Values.maxUnavailable }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "ff-server.labels" . | nindent 8 }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "ff-server.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ff-server.serviceAccountName" . }}
+      securityContext:
+      {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      {{- if .Values.global.database.timescaledb.installed }}
+      {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-timescale" "appName" "timescaledb-single-chart") | nindent 6}}
+      {{- end }}
+      containers:
+      - name: {{ include "ff-server.name" . }}
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+        {{- toYaml .Values.containerSecurityContext | nindent 10 }}
+        env:
+        {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCACertPath" "EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH" "sslCATrustStorePassword" "EVENTS_FRAMEWORK_REDIS_SSL_CA_TRUST_STORE_PASSWORD")) | indent 8 }}
+        {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "EVENTS_FRAMEWORK_REDIS_USER" "passwordVariableName" "EVENTS_FRAMEWORK_REDIS_USER_PASSWORD" ) | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cf" "variableNames" ( dict "sslEnabled" "CF_REDIS_USE_TLS" "sslCATrustStorePath" "CF_REDIS_TLS_PATH")) | indent 8 }}
+        {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cf" "userVariableName" "CF_REDIS_USERNAME" "passwordVariableName" "CF_REDIS_PASSWORD" ) | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cfmetrics" "variableNames" ( dict "sslEnabled" "METRICS_REDIS_USE_TLS" "sslCATrustStorePath" "METRICS_REDIS_TLS_PATH")) | indent 8 }}
+        {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cfmetrics" "userVariableName" "METRICS_REDIS_USERNAME" "passwordVariableName" "METRICS_REDIS_PASSWORD" ) | indent 8 }}
+        {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "ANALYTICS_DB_USER" "passwordVariableName" "ANALYTICS_DB_PASS" "sslModeVariableName" true) | indent 8 }}
+        {{- if .Values.global.cfPostgresEnabled }}
+        {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS" "sslModeVariableName" "SSL_MODE" "handleSSLModeDisable" true) | indent 8 }}
+        {{- else }}
+        {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS" "sslModeVariableName" "SSL_MODE" "handleSSLModeDisable" true) | indent 8 }}
+        {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "ff-server.name" . }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetport }}
+          protocol: "TCP"
+        {{- if .Values.service.grpcEnabled }}
+        - name: grpc
+          containerPort: {{.Values.service.targetgrpcport}}
+          protocol: "TCP"
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /api/1.0/version
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 10
+          periodSeconds: 10
+          failureThreshold: 6
+          successThreshold: 1
+        readinessProbe:
+          failureThreshold: 6
+          httpGet:
+            path: /api/1.0/health
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 10
+        {{- if .Values.lifecycleHooks }}
+        lifecycle: {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.lifecycleHooks "context" $) | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | nindent 10}}
+        {{- if .Values.extraVolumeMounts }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 10 }}
+        {{- end }}
+        {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 10 }}
+        {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cf") | nindent 10 }}
+        {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "cfmetrics") | nindent 10 }}
+        {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | nindent 10}}
+        {{- if .Values.resources }}
+        resources:
+          {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.resources "context" $) | nindent 10 }}
+        {{- end }}
+      {{ if or .Values.global.ha .Values.affinity }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - {{ include "ff-server.name" . }}
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{ end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if .Values.extraVolumes }}
+      {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.extraVolumes "context" $ ) | nindent 8 }}
+      {{- end }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cf") | indent 8 }}
+      {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "cfmetrics") | indent 8 }}
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}

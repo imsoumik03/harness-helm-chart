@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ui.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ui.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}
+  {{- if .Values.global.airgap }}
+  HARNESS_ENABLE_EXTERNAL_SCRIPTS_PLACEHOLDER: "false"
+  HARNESS_ENABLE_SABERFEEDBACK_PLACEHOLDER: "false"
+  HARNESS_ENABLE_MUNCHKIN_PLACEHOLDER: "false"
+  HARNESS_ENABLE_AMPLITUDE_PLACEHOLDER: "false"
+  HARNESS_ENABLE_ELEVIO_PLACEHOLDER: "false"
+  HARNESS_ENABLE_GOOGLEANALYTICS_PLACEHOLDER: "false"
+  HARNESS_ENABLE_GET_IP_ADDRESS_PLACEHOLDER: "false"
+  HARNESS_ENABLE_BUGSNAG_PLACEHOLDER: "false"
+  HARNESS_ENABLE_HEADWAY_PLACEHOLDER: "false"
+  HARNESS_ENABLE_SEGMENT_PLACEHOLDER: "false"
+  {{ end }}
+  {{- if .Values.additionalConfigs }}
+  {{- toYaml .Values.additionalConfigs | nindent 2 }}
+  {{- end }}

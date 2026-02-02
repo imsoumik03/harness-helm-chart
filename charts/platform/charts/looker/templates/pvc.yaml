@@ -1,0 +1,53 @@
+{{- if (include "looker.createPVC" (dict "persistence" .Values.models.persistence)) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "looker.claimName" (dict "persistence" .Values.models.persistence) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "looker.labels" . | nindent 4 }}
+  {{- if .Values.models.persistence.annotations }}
+  annotations:
+    {{- if .Values.models.persistence.annotations }}
+      {{- include "common.tplvalues.render" ( dict "value" .Values.models.persistence.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- include "harnesscommon.storage.class" (dict "persistence" .Values.models.persistence "global" .Values.global) | nindent 2 }}
+  accessModes:
+  {{- range .Values.models.persistence.accessModes }}
+  - {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.models.persistence.size }}
+{{- end}}
+
+---
+
+{{- if (include "looker.createPVC" (dict "persistence" .Values.database.persistence)) }}
+{{- if not .Values.mysql.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "looker.claimName" (dict "persistence" .Values.database.persistence) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "looker.labels" . | nindent 4 }}
+  {{- if .Values.database.persistence.annotations }}
+  annotations:
+    {{- if .Values.database.persistence.annotations }}
+      {{- include "common.tplvalues.render" ( dict "value" .Values.database.persistence.annotations "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- include "harnesscommon.storage.class" (dict "persistence" .Values.database.persistence "global" .Values.global) | nindent 2 }}
+  accessModes:
+  {{- range .Values.database.persistence.accessModes }}
+  - {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.database.persistence.size }}
+{{- end}}
+{{- end}}

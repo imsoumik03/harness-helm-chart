@@ -1,0 +1,178 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name:  {{ include "codesearch.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "codesearch.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.instances }}
+  serviceName:  {{ include "codesearch.name" . }}-headless
+  selector:
+    matchLabels:
+      {{- include "codesearch.selectorLabels" . | nindent 6 }}
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app:  {{ include "codesearch.name" . }}
+        {{- include "codesearch.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "codesearch.pullSecrets" . | nindent 6 }}
+      terminationGracePeriodSeconds: {{ add .Values.config.CODESEARCH_SERVER_GRACEFUL_SHUTDOWN_TIME 5 }}
+      serviceAccountName: {{ include "codesearch.serviceAccountName" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+        - name: config-volume
+          configMap:
+            name: {{ include "codesearch.name" . }}-nodes
+        {{- if .Values.postgres.sslMode }}
+        - name: certs
+          emptyDir: {}
+        - name: secret-certs
+          secret:
+            secretName: {{ include "codesearch.name" . }}-ext-secret-0
+            defaultMode: 0400
+        {{ end }}
+      initContainers:
+      {{- if .Values.global.database.postgres.installed }}
+        {{ include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8}}
+      {{- end }}
+      {{- if .Values.initializeDatabase.enabled }}
+        - name: create-db-if-not-exists
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.postgres.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+          - name: POSTGRES_HOST
+            value: {{include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" .) }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 10 }}
+          command:
+          - "bin/bash"
+          - "-c"
+          - echo "SELECT 'CREATE DATABASE code_search_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'code_search_db')\gexec"  | PGPASSWORD=${POSTGRES_PASSWORD} psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST}
+        {{- end }}
+        - name: set-permissions
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.busybox.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.busybox.image.pullPolicy }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.config.mountPath }}
+          securityContext:
+            runAsUser: 0
+          command: [ "sh", "-c" ]
+          args:
+            - |
+              mount_path="{{ .Values.config.mountPath | quote }}"
+              chown 1001:1001 $mount_path;
+        {{- if .Values.postgres.sslMode }}
+        - name: setup-certs
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.busybox.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.busybox.image.pullPolicy }}
+          volumeMounts:
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12}}
+            - name: certs
+              mountPath: "/opt/harness/certs"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cp -LR /tmp/secret-certs/. /opt/harness/certs/ &&
+              chmod -R a=,u=rX /opt/harness/certs && \
+              chown -R 1001:1001 /opt/harness/certs
+          {{ end }}
+      containers:
+        - name: {{ include "codesearch.name" . }}
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1001
+          envFrom:
+          - configMapRef:
+              name:  {{ include "codesearch.name" . }}
+          - secretRef:
+              name:  {{ include "codesearch.name" . }}
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 12 }}
+            - name: CODESEARCH_INSTANCE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: CODESEARCH_DATABASE_DATASOURCE
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "code_search_db" "keywordValueConnectionString" true "userVariableName" "$(POSTGRES_USER)" "passwordVariableName" "$(POSTGRES_PASSWORD)" ) | quote }}
+          volumeMounts:
+          {{- if .Values.postgres.sslMode }}
+            - name: certs
+              mountPath: "/opt/harness/certs"
+          {{ end }}
+            - name: data
+              mountPath: {{ .Values.config.mountPath | quote }}
+            - name: config-volume
+              mountPath: /app/config
+          ports:
+          - name: {{ include "codesearch.name" . }}
+            containerPort: {{ .Values.config.CODESEARCH_HTTP_PORT }}
+            protocol: "TCP"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: {{ include "codesearch.name" . }}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: {{ include "codesearch.name" . }}
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: {{ include "codesearch.name" . }}
+            timeoutSeconds: 10
+            periodSeconds: 30
+            failureThreshold: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- $storageClassName := (include "codesearch.storage.class" $) }}
+      {{- if $storageClassName }}
+      storageClassName: {{ $storageClassName }}
+      {{- end}}
+      resources:
+        requests:
+          storage: {{ .Values.config.CODESEARCH_PV_STORAGE }}

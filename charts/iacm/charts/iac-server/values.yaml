@@ -1,0 +1,426 @@
+global:
+  loadbalancerURL: "example.harness.io"
+  airgap: false
+  ha: false
+  commonAnnotations: {}
+  commonLabels: {}
+  monitoring:
+    enabled: false
+  opa:
+    enabled: false
+  database:
+    postgres:
+      ## - installed = true if installed within cluster
+      installed: true
+      ## - protocol to use for connection
+      protocol: postgres
+      ## - host array for external
+      hosts:
+        - postgres:5432
+      ## - secret name containing external values
+      secretName: ""
+      ## - key within secret containing username
+      userKey: ""
+      ## - key within secret containing password
+      passwordKey: ""
+      ## - database name used to connect to a specific Postgres database
+      databaseName: ""
+      ## - extra arguments set to connection string
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              POSTGRES_USER: ""
+              POSTGRES_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                POSTGRES_USER:
+                  name: ""
+                  property: ""
+                POSTGRES_PASSWORD:
+                  name: ""
+                  property: ""
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: ""
+      userKey: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+  # Enable if using ingress objects
+  istio:
+    enabled: false
+    gateway:
+      create: true
+      port: 443
+      protocol: HTTPS
+    hosts:
+      - '*'
+    strict: true
+    tls:
+      credentialName: ""
+    virtualService:
+      hosts: []
+      gateways: []
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: true
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+    service:
+      name: iac-server
+      port: 80
+  imagePullSecrets: []
+  waitForInitContainer:
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: IfNotPresent
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+    runAsUser: 1000
+  enablePodMonitoring: false
+# meta
+nameOverride: ""
+fullnameOverride: ""
+podAnnotations: {}
+podLabels: {}
+monitoring:
+  managedPlatform: google
+  path: /metrics
+  port: 3000
+createDb:
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: 14.18.0-debian-12-r0
+    digest: ""
+    imagePullSecrets: []
+# image
+image:
+  registry: docker.io
+  repository: harness/iac-server-signed
+  pullPolicy: Always
+  tag: 1.296.0
+  digest: ""
+  imagePullSecrets: []
+# resources quotas
+resources:
+  requests:
+    memory: 500M
+    cpu: 500m
+    ephemeral-storage: 250M
+  limits:
+    memory: 500M
+    ephemeral-storage: 250M
+# autoscaling
+replicas: 1
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 8
+  targetCPU: 70
+  targetMemory: 70
+# updates
+maxSurge: 1
+maxUnavailable: 0
+# service
+service:
+  type: ClusterIP
+  port: 8080
+  targetport: 8080
+# ingress
+virtualService:
+  annotations: {}
+  objects:
+    - pathMatchType: prefix
+      pathRewrite: '/'
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/iacm/'
+    - pathMatchType: prefix
+      pathRewrite: '/.well-known/terraform.json'
+      paths:
+        - path: '/.well-known/terraform.json'
+ingress:
+  annotations: {}
+  className: nginx
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/iacm(/|$)(.*)'
+    - annotations:
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+      paths:
+        - path: '/.well-known/terraform.json'
+# deployment configuration
+serviceAccount:
+  create: false
+  annotations: {}
+  name: harness-default
+nodeSelector: {}
+tolerations: []
+affinity: {}
+lifecycleHooks: {}
+# security
+podSecurityContext:
+  fsGroup: 65534
+containerSecurityContext:
+  runAsUser: 65534
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+# Kafka configuration - set enabled to true when Kafka secrets exist in namespace
+kafka:
+  enabled: false
+  certs:
+    secretName: kafka-platform-iacm-service
+  clusterCA:
+    secretName: kafka-platform-cluster-ca-cert
+# additional configuration
+extraVolumeMounts:
+  - name: service-account
+    mountPath: /opt/harness/svc
+extraVolumes:
+  - name: service-account
+    secret:
+      secretName: iac-server-service-accounts
+      items:
+        - key: redis-labs-ca-pem
+          path: redis_labs_ca_truststore
+secrets:
+  default:
+    POLICY_MGMT_AUTH_SECRET: "HVSKUYqD4e5Rxu12hFDdCJKGM64sxgEynvdDhaOHaTHhwwn0K4Ttr0uoOxSsEVYNrUU="
+    HARNESS_CODE_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    AUDIT_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    NG_MANAGER_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    SERVICE_GLOBAL_TOKEN: "551715ea-ca71-11ec-9d64-0242ac120002"
+    SEGMENT_WRITE_KEY: ""
+    PLATFORM_SECRET_KEY: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+    PIPELINE_SERVICE_AUTH_SECRET: "IC04LYMBf1lDP5oeY4hupxd4HJhLmN6azUku3xEbeE3SUx5G3ZYzhbiwVtK4i7AmqyU9OZkwB4v8E9qM"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        POLICY_MGMT_AUTH_SECRET: ""
+        HARNESS_CODE_AUTH_SECRET: ""
+        AUDIT_AUTH_SECRET: ""
+        NG_MANAGER_AUTH_SECRET: ""
+        SERVICE_GLOBAL_TOKEN: ""
+        SEGMENT_WRITE_KEY: ""
+    - secretName: "minio"
+      keys:
+        MINIO_ROOT_USER: root-user
+        MINIO_ROOT_PASSWORD: root-password
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          POLICY_MGMT_AUTH_SECRET:
+            name: ""
+            property: ""
+          HARNESS_CODE_AUTH_SECRET:
+            name: ""
+            property: ""
+          AUDIT_AUTH_SECRET:
+            name: ""
+            property: ""
+          NG_MANAGER_AUTH_SECRET:
+            name: ""
+            property: ""
+          SERVICE_GLOBAL_TOKEN:
+            name: ""
+            property: ""
+          SEGMENT_WRITE_KEY:
+            name: ""
+            property: ""
+# redis secrets
+redis:
+  protocol: ""
+  hosts: []
+  extraArgs: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          REDIS_USERNAME: ""
+          REDIS_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            REDIS_USERNAME:
+              name: ""
+              property: ""
+            REDIS_PASSWORD:
+              name: ""
+              property: ""
+# database secrets
+createDB: true
+# application envs
+config:
+  ACCESS_CONTROL_BASE_URL: 'http://access-control.{{.Release.Namespace}}.svc.cluster.local:9006'
+  AUDIT_BASE_URL: 'http://platform-service.{{.Release.Namespace}}.svc.cluster.local:9005'
+  EVENTS_FRAMEWORK_REDIS_ENABLED: "true"
+  EVENTS_FRAMEWORK_REDIS_SENTINEL_MASTER_NAME: "harness-redis"
+  EVENTS_FRAMEWORK_REDIS_SENTINEL_URLS: '{{ include "harnesscommon.dbconnectionv2.redisConnection" (dict "context" $ "unsetProtocol" true) }}'
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  EVENTS_FRAMEWORK_REDIS_USE_PASSWORD: '{{ not .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_REDIS_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  FF_BASE_URL: "https://harness0.harness.io/sdk/api/1.0"
+  FF_EVENT_URL: "https://harness0.harness.io/events"
+  HARNESS_CODE_BASE_URL: "http://code-api.{{.Release.Namespace}}.svc.cluster.local:80/"
+  LISTEN_ADDR: ":8080"
+  CG_MANAGER_BASE_URL: 'http://harness-manager.{{.Release.Namespace}}.svc.cluster.local:9090'
+  NG_MANAGER_BASE_URL: 'http://ng-manager.{{.Release.Namespace}}.svc.cluster.local:7090'
+  POLICY_MGM_BASE_URL: 'http://policy-mgmt.{{.Release.Namespace}}.svc.cluster.local:3000'
+  POSTGRES_DB: "iac_server"
+  POSTGRES_HOST: '{{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" $) }}'
+  POSTGRES_PORT: '{{ include "harnesscommon.dbconnectionv2.postgresPort" (dict "context" $) | default 5432 }}'
+  PLATFORM_BASE_URL: 'https://pipeline-service.{{.Release.Namespace}}.svc.cluster.local:12001'
+  PIPELINE_SERVICE_BASE_URL: 'http://pipeline-service.{{.Release.Namespace}}.svc.cluster.local:12001'
+  MODULE_REGISTRY_URL: "/gateway/iacm/registry/account"
+  PROVIDER_REGISTRY_URL: "/provider/account/"
+  PROVIDER_REGISTRY_BASE_URL: '{{ .Values.global.loadbalancerURL }}/iacm/'
+  TEMPLATE_SERVICE_BASE_URL: 'http://template-service.{{.Release.Namespace}}.svc.cluster.local:15002'
+  MINIO_ENDPOINT: "minio.{{.Release.Namespace}}.svc.cluster.local:9000"
+  MINIO_BUCKET_PREFIX: ""
+  ENABLE_SMP: "true"
+  IACM_GLOBAL_RATE_LIMIT_RPS: "1"
+  IACM_GLOBAL_RATE_LIMIT_BURST: "1"
+  IACM_GLOBAL_RATE_LIMIT_ENABLED: "false"
+  DATABASE_SSL_MODE: "disable"
+  AWS_ENABLED: "false"
+  DEFAULT_PUBLIC_SUBDOMAIN: "test.harness.io"
+  IACM_GLOBAL_GATEWAY_PROVIDER_DOMAIN: "provider.harness.io"
+  # Kafka config
+  KAFKA_CONFLUENT_BOOTSTRAP_SERVER_URLS: "kafka-platform-kafka-bootstrap.harness-helm-new.svc.cluster.local:9093"
+  KAFKA_CONFLUENT_SECURITY_PROTOCOL: "SSL"
+  KAFKA_CONFLUENT_SSL_ENDPOINT_IDENTIFICATION_ALGORITHM: "https"
+  KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: "http://schema-registry-service.harness-helm-new.svc.cluster.local:8081"
+  KAFKA_CONFLUENT_SCHEMA_REGISTRY_BASIC_AUTH_CREDENTIALS_SOURCE: ""
+  # TLS Certificate paths
+  KAFKA_PRODUCER_TLS_CA_FILE: "/etc/kafka/cluster-ca/ca.crt"
+  KAFKA_PRODUCER_TLS_CERT_FILE: "/etc/kafka/certs/user.crt"
+  KAFKA_PRODUCER_TLS_KEY_FILE: "/etc/kafka/certs/user.key"
+  # FLEXI PRICING
+  FLEXI_BILLING_EVENTS_WORKER_ENABLED: "false"
+  FLEXI_BILLING_EVENTS_CRON_SCHEDULE: "0 2,8 * * *"
+  BILLING_METRIC_TOPIC: "platform-billing-metrics-v1"
+redisCert: ""
+database:
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+postgresPassword:
+  name: postgres
+  key: postgres-password
+postgres:
+  enabled: false
+  initialStoCoreDb: true
+  database: ""
+  ## - protocol to use for connection
+  protocol: ""
+  ## - host array for external
+  hosts: []
+  extraArgs: ""
+  image:
+    registry: docker.io
+    repository: harness/postgresql
+    pullPolicy: IfNotPresent
+    tag: 14.18.0-debian-12-r0
+    digest: ""
+  secrets:
+    kubernetesSecrets:
+      - secretName: ""
+        keys:
+          POSTGRES_USER: ""
+          POSTGRES_PASSWORD: ""
+    secretManagement:
+      externalSecretsOperator:
+        - secretStore:
+            name: ""
+            kind: ""
+          remoteKeys:
+            POSTGRES_USER:
+              name: ""
+              property: ""
+            POSTGRES_PASSWORD:
+              name: ""
+              property: ""

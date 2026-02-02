@@ -1,0 +1,261 @@
+{{- $imageRepository := .Values.backstage.image.repository | required "The repository name of the image is required (e.g. my-backstage:tag | docker.io/my-backstage:tag) !" -}}
+{{- $imageTag := .Values.backstage.image.tag | required "The image tag is required (e.g my-backstage:tag | docker.io/my-backstage:tag) !" -}}
+{{- $installDir := .Values.backstage.installDir -}}
+---
+apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
+kind: Deployment
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{ include "common.labels.standard" . | nindent 4 }}
+    app.kubernetes.io/component: backstage
+    app: idp-ui
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ .Values.backstage.replicas }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: backstage
+  template:
+    metadata:
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        app.kubernetes.io/component: backstage
+        app: idp-ui
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '7007'
+        prometheus.io/path: '/metrics'
+        rollme: {{ randAlphaNum 5 | quote }}
+        checksum/app-config: {{ include "common.tplvalues.render" ( dict "value" .Values.backstage.appConfig "context" $) | sha256sum }}
+        {{- if .Values.backstage.podAnnotations }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.podAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+    spec:
+      terminationGracePeriodSeconds: 10
+      {{- if .Values.dockercfg}}
+      imagePullSecrets:
+      - name: dockerhub-harness-idp-ui
+      {{- end}}
+      serviceAccountName: {{ include "backstage.serviceAccountName" . }}
+      {{- if .Values.backstage.podSecurityContext }}
+      securityContext:
+        {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.podSecurityContext "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.backstage.nodeSelector }}
+      nodeSelector:
+        {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.nodeSelector "context" $) | nindent 8 }}
+      {{- end }}
+      {{- if .Values.backstage.tolerations }}
+      tolerations:
+        {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.tolerations "context" $) | nindent 8 }}
+      {{- end }}
+      volumes:
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+        {{- if (or .Values.backstage.extraAppConfig (and .Values.backstage.extraVolumeMounts .Values.backstage.extraVolumes)) }}
+        {{- range .Values.backstage.extraAppConfig }}
+        - name: {{ .configMapRef }}
+          configMap:
+            name: {{ .configMapRef }}
+        {{- end }}
+        {{- if .Values.backstage.extraVolumes }}
+          {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.extraVolumes "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- end }}
+        {{- if .Values.backstage.appConfig }}
+        - name: backstage-app-config
+          configMap:
+            name: backstage-app-config
+        {{- end }}
+        {{- if .Values.techdocs_gcs_sa }}
+        - name: techdocs-gcs-sa
+          secret:
+            secretName: idp-secrets
+            items:
+            - key: techdocs_gcs_sa
+              path: idp-play.json  
+        {{- end }}
+      #{{- include "backstage.renderImagePullSecrets" . | nindent 6 }}
+      {{- if .Values.backstage.initContainers }}
+      initContainers:
+        {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.initContainers "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: backstage-backend
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.backstage.image.pullPolicy | quote -}}
+          {{- if .Values.backstage.containerSecurityContext }}
+          securityContext:
+            {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.containerSecurityContext "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.diagnosticMode.enabled }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.command "context" $) | nindent 12 }}
+          {{- else if .Values.backstage.command }}
+          command: {{- include "common.tplvalues.render" (dict "value" .Values.backstage.command "context" $) | nindent 12 }}
+          {{- end }}
+
+          {{- if .Values.diagnosticMode.enabled }}
+          args: {{- include "common.tplvalues.render" (dict "value" .Values.diagnosticMode.args "context" $) | nindent 12 }}
+          {{- else }}
+          args:
+          {{- range .Values.backstage.args }}
+            - {{ . | quote }}
+          {{- end }}
+          {{- if .Values.backstage.extraAppConfig }}
+          {{- range .Values.backstage.extraAppConfig }}
+            - "--config"
+            - "{{ $installDir }}/{{ .filename }}"
+          {{- end }}
+          {{- end }}
+          {{- if .Values.backstage.appConfig }}
+            - "--config"
+            - "{{ $installDir }}/app-config-from-configmap.yaml"
+          {{- end }}
+          {{- if .Values.node_options }}
+            - {{ .Values.node_options }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.backstage.resources }}
+          resources: {{- include "common.tplvalues.render" (dict "value" .Values.backstage.resources "context" $) | nindent 12 }}
+          {{- end }}
+          {{- if .Values.backstage.extraEnvVarsSecrets }}
+          envFrom:
+            {{- range .Values.backstage.extraEnvVarsSecrets }}
+            - secretRef:
+                name: {{ . }}
+            {{- end }}
+          {{- end }}
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 12}}
+            {{- if and $.Values.postgres.secrets.secretManagement.externalSecretsOperator (index $.Values.postgres.secrets.secretManagement.externalSecretsOperator 0).remoteKeys.POSTGRES_HOST }}
+            {{- include "idp.postgres.hostEnv" . | indent 12 }}
+            {{- else }}
+            - name: POSTGRES_HOST
+              value: '{{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" .) }}'
+            {{- end }}
+            {{- if and $.Values.postgres.secrets.secretManagement.externalSecretsOperator (index $.Values.postgres.secrets.secretManagement.externalSecretsOperator 0).remoteKeys.POSTGRES_PORT }}
+            {{- include "idp.postgres.portEnv" . | indent 12 }}
+            {{- else }}
+            - name: POSTGRES_PORT
+              value: '{{ include "harnesscommon.dbconnectionv2.postgresPort" (dict "context" .) }}'
+            {{- end }}
+            - name: APP_CONFIG_backend_listen_port
+              value: {{ .Values.backstage.containerPorts.backend | quote }}
+            - name: IDP_SERVICE_BASE_URL
+              value: {{ .Values.global.loadbalancerURL | quote }}
+            - name: HARNESS_ACCOUNT_ID
+              value: {{ .Values.idp_account_id | quote }}
+            - name: FF_BASE_URL
+              value: {{ .Values.ff_base_url | quote }}
+            - name: FF_EVENTS_URL
+              value: {{ .Values.ff_events_url | quote }}
+            - name: NAMESPACE
+              value: {{ .Values.idp_namespace | quote }}
+            - name: HEAP_DUMP_CAPTURE_SUPPORT
+              value: {{ .Values.heap_dump_capture_support | quote }}
+            - name: GCP_STORAGE_BUCKET_FOR_HEAP_DUMPS
+              value: {{ .Values.gcp_storage_bucket_for_heap_dumps | quote }}
+            - name: ENVIRONMENT
+              value: {{ .Values.idp_env | quote }}
+            - name: NODE_OPTIONS
+              value: {{ .Values.node_options | quote }}
+            - name: IDP_ENCRYPTION_SECRET
+              value: {{ .Values.idpEncryptionSecret | quote }}
+            - name: IDP_SERVICE_SECRET
+              value: {{ .Values.idpServiceSecret | quote }}
+            - name: CODE_SERVICE_SECRET
+              value: {{ .Values.codeServiceSecret | quote }}
+            - name: DYNAMIC_CONFIG_RESOLUTION
+              value: {{ .Values.dynamic_config_resolution | quote }}
+            - name: DELTA_MUTATION_ENABLED
+              value: {{ .Values.delta_mutation_enabled | quote }}
+            - name: APP_BASE_URL
+              value: {{ .Values.app_base_url | quote }}
+            - name: BACKEND_BASE_URL
+              value: {{ .Values.backend_base_url | quote }}
+            {{- if .Values.backstage.extraEnvVars }}
+            {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.extraEnvVars "context" $) | nindent 12 }}
+            {{- end }}
+          ports:
+            - name: backend
+              containerPort: {{ .Values.backstage.containerPorts.backend }}
+              protocol: TCP
+          {{- if (or .Values.backstage.extraAppConfig .Values.backstage.appConfig (and .Values.backstage.extraVolumeMounts .Values.backstage.extraVolumes)) }}
+          volumeMounts:
+            {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12}}
+            {{- range .Values.backstage.extraAppConfig }}
+            - name: {{ .configMapRef }}
+              mountPath: "{{ $installDir }}/{{ .filename }}"
+              subPath: {{ .filename }}
+            {{- end }}
+            {{- if .Values.backstage.appConfig }}
+            - name: backstage-app-config
+              mountPath: "{{ $installDir }}/app-config-from-configmap.yaml"
+              subPath: app-config.yaml
+            {{- end }}
+            {{- if .Values.backstage.extraVolumeMounts }}
+              {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.extraVolumeMounts "context" $ ) | nindent 12 }}
+            {{- end }}
+          {{- end }}
+        {{- if .Values.backstage.extraContainers }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.backstage.extraContainers "context" $) | nindent 8 }}
+        {{- end }}
+          {{- if eq .Values.heap_dump_capture_support "enabled" }}
+          startupProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 45
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 40
+          {{- else }}
+          startupProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            timeoutSeconds: 5
+            periodSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: 7007
+            initialDelaySeconds: 45
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 20
+          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/bin/sh", "-c", "/app/pre-stop.sh" ]

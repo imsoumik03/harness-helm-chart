@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ff-db-migrations.name" . }}
+  labels:
+    {{- include "ff-db-migrations.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- if and .Values.global.cfPostgresEnabled .Values.isPostgresDB }}
+  DB_NAME: {{ .Values.config.PG_DB_NAME }}
+  DB_HOST: {{ include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" $) }}
+  DB_PORT: {{ include "harnesscommon.dbconnectionv2.postgresPort" (dict "context" $) | default 5432 | quote }}
+  SSL_MODE: {{ include "postgresSSLMode" (dict "context" $) }}
+  {{- else }}
+  DB_NAME: {{ .Values.config.TS_DB_NAME }}
+  DB_HOST: {{ include "harnesscommon.dbconnectionv2.timescaleHost" (dict "context" $) }}
+  DB_PORT: {{ include "harnesscommon.dbconnectionv2.timescalePort" (dict "context" $) | default 5432 | quote }}
+  SSL_MODE: {{ include "timescaleSSLMode" (dict "context" $) }}
+  {{- end }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2}}

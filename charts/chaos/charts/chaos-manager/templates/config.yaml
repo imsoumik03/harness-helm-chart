@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chaos-manager.name" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    {{- include "chaos-manager.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.monitoring.config" . | nindent 2 }}
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.config "context" $) | nindent 2 }}
+  
+  {{- if .Values.allowedOrigins }}
+  ALLOWED_ORIGINS: '{{ .Values.allowedOrigins }}'
+  {{- else }}
+  ALLOWED_ORIGINS: "{{ .Values.global.loadbalancerURL }}"
+  {{- end -}}
+
+  {{- if and ( eq .Values.config.SAAS_ENABLED "false") .Values.global.imageRegistry  }}
+  DEFAULT_IMAGE_REGISTRY_SERVER: '{{ .Values.global.imageRegistry }}'
+  {{- else }}
+  DEFAULT_IMAGE_REGISTRY_SERVER: 'docker.io'
+  {{- end -}}
+
+  {{- if .Values.imageRegistryAccount }}
+  DEFAULT_IMAGE_REGISTRY_ACCOUNT: '{{ .Values.imageRegistryAccount }}'
+  {{- else }}
+  DEFAULT_IMAGE_REGISTRY_ACCOUNT: 'harness'
+  {{- end -}}
+  {{- include "harnesscommon.secretsLoader.configContent" (dict "ctx" $ "databaseSecrets" (list 
+    (dict "dbtype" "mongo" "usernamesecrets" (list "DB_USER") "passwordsecrets" (list "DB_PASSWORD"))
+    (dict "dbtype" "redis" "usernamesecrets" (list "REDIS_CACHE_USERNAME" "REDIS_USERNAME") "passwordsecrets" (list "REDIS_CACHE_PASSWORD" "REDIS_PASSWORD"))
+    (dict "dbtype" "timescaledb" "usernamesecrets" (list "PG_USER") "passwordsecrets" (list "PG_PASSWORD"))
+  )) | nindent 2}}

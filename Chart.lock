@@ -1,0 +1,45 @@
+dependencies:
+- name: harness-common
+  repository: https://harness.github.io/helm-common
+  version: 1.4.13
+- name: ccm
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: cd
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: chaos
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: ci
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: ff
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: platform
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: srm
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: sto
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: ssca
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: db-devops
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: code
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: iacm
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+- name: idp
+  repository: gs://smp-helm-charts/qa
+  version: 0.36.0-qa.20260202.23050.77
+digest: sha256:1db57fd447adff62d068757c7ba67967c9798ecaceca56a25ef2eb0123723111
+generated: "2026-02-02T10:33:33.530249797Z"

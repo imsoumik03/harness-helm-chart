@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "code-api.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "code-api.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.instances }}
+  selector:
+    matchLabels:
+      {{- include "code-api.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app: {{ include "code-api.name" . }}
+        {{- include "code-api.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "code-api.pullSecrets" . | nindent 6 }}
+      terminationGracePeriodSeconds: {{ add .Values.config.CODE_SERVER_GRACEFUL_SHUTDOWN_TIME 5 }}
+      serviceAccountName: {{ include "code-api.serviceAccountName" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+
+      volumes:
+        {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 8 }}
+        {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "code-api") | indent 8 }}
+        {{- if .Values.postgres.sslMode }}
+        - name: certs
+          emptyDir: {}
+        - name: secret-certs
+          secret:
+            secretName: {{ include "code-api.name" . }}-ext-secret-0
+            defaultMode: 0400
+        {{ end }}
+        - name: ssh-keys
+          emptyDir: {}
+
+      initContainers:
+      {{- if .Values.global.database.postgres.installed }}
+        {{- include "harnesscommon.initContainer.waitForContainer" (dict "root" . "containerName" "wait-for-postgres" "appName" "postgres") | nindent 8}}
+      {{ end }}
+      {{- if .Values.initializeDatabase.enabled }}
+        - name: create-db-if-not-exists
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.postgres.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          env:
+          - name: POSTGRES_HOST
+            value: {{include "harnesscommon.dbconnectionv2.postgresHost" (dict "context" .) }}
+          {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 10 }}
+          command:
+          - "bin/bash"
+          - "-c"
+          - |
+            export PGPASSWORD=${POSTGRES_PASSWORD}
+            # Check and create code_db
+            DB_EXISTS=$(psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST} -t -c "SELECT 1 FROM pg_database WHERE datname='code_db'" | tr -d '[:space:]')
+            if [ -z "$DB_EXISTS" ]; then
+              psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST} -c "CREATE DATABASE code_db WITH OWNER ${POSTGRES_USER}"
+              echo "Created code_db database"
+            else
+              echo "code_db already exists"
+            fi
+
+            # Check and create autoai_db
+            DB_EXISTS=$(psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST} -t -c "SELECT 1 FROM pg_database WHERE datname='autoai_db'" | tr -d '[:space:]')
+            if [ -z "$DB_EXISTS" ]; then
+              psql -U ${POSTGRES_USER} -h ${POSTGRES_HOST} -c "CREATE DATABASE autoai_db WITH OWNER ${POSTGRES_USER}"
+              echo "Created autoai_db database"
+            else
+              echo "autoai_db already exists"
+            fi
+      {{ end }}
+      {{- if .Values.postgres.sslMode }}
+        - name: setup-certs
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.busybox.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.busybox.image.pullPolicy }}
+          volumeMounts:
+              # find how to add external secret as volume mount for one of the secret
+          {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12}}
+            - name: certs
+              mountPath: "/opt/harness/certs"
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cp -LR /tmp/secret-certs/. /opt/harness/certs/ &&
+              chmod -R a=,u=rX /opt/harness/certs && \
+              chown -R 1001:1001 /opt/harness/certs
+      {{ end }}
+      containers:
+        - name: gitness
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            runAsUser: 1001
+            allowPrivilegeEscalation: false
+          envFrom:
+            - configMapRef:
+                name: {{ include "code-api.name" . }}
+            - configMapRef:
+                name: {{ include "code-api.name" . }}-autoai
+          env:
+            {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 12}}
+            {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "POSTGRES_USER" "passwordVariableName" "POSTGRES_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "HARNESS_REDIS_SSL_ENABLED" "sslCACertPath" "HARNESS_REDIS_CERT_PATH")) | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv"  (dict "ctx" $ "database" "events" "userVariableName" "HARNESS_REDIS_USERNAME" "passwordVariableName" "HARNESS_REDIS_PASSWORD") | indent 12 }}
+            {{- include "harnesscommon.dbv3.redisEnv"  (dict "ctx" $ "database" "code-api" "userVariableName" "GITNESS_REDIS_USERNAME" "passwordVariableName" "GITNESS_REDIS_PASSWORD") | indent 12 }}
+            - name: GITNESS_DATABASE_DATASOURCE
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "code_db" "keywordValueConnectionString" true "userVariableName" "$(POSTGRES_USER)" "passwordVariableName" "$(POSTGRES_PASSWORD)" ) | quote }}
+            - name: AUTOAI_DATABASE_DATASOURCE
+              value: {{ include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "autoai_db" "keywordValueConnectionString" true "userVariableName" "$(POSTGRES_USER)" "passwordVariableName" "$(POSTGRES_PASSWORD)" "localDBCtx" .Values.autoai.postgres) | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          ports:
+            - name: code-http
+              containerPort: 3000
+              protocol: "TCP"
+          volumeMounts:
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 12 }}
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "code-api") | nindent 12 }}
+            {{- if .Values.postgres.sslMode }}
+            - name: certs
+              mountPath: "/opt/harness/certs"
+            {{ end }}
+            {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 12}}
+

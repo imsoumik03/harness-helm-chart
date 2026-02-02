@@ -1,0 +1,38 @@
+{{- if or (eq .Values.autoscaling.enabled true) (eq .Values.global.autoscaling.enabled true) }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ff-server.name" . }}
+  labels:
+    {{- include "ff-server.labels" . | nindent 4 }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "ff-server.name" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  {{ include "harnesscommon.hpa.metrics.apiVersion" . }}
+  behavior:
+    scaleDown:
+      # don't scale down until 15min after load had dropped
+      stabilizationWindowSeconds: 900
+      # scale down pods at a rate of one pod per minute
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+    scaleUp:
+      # scale up based on current metrics
+      stabilizationWindowSeconds: 0
+      # scale up pods at a rate of 4 pods per 5 seconds
+      policies:
+      - type: Pods
+        value: 4
+        periodSeconds: 5
+      selectPolicy: Max
+{{- end }}

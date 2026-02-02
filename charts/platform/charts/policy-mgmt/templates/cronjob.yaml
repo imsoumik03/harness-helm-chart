@@ -1,0 +1,68 @@
+{{- if .Values.cron.enable -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{.Chart.Name}}-entitlements-cron
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: {{.Chart.Name}}-entitlements-cron
+            image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+            command: ["/app/policy-mgmt"]
+            args: ["entitlements-job"]
+            envFrom:
+            - configMapRef:
+                name: {{.Chart.Name}}
+            env:
+              {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "APP_EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCACertPath" "APP_EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH")) | indent 14 }}
+              {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "APP_EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "APP_EVENTS_FRAMEWORK_REDIS_PASSWORD" ) | indent 14 }}
+              {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "APP_DATABASE_USER" "passwordVariableName" "APP_DATABASE_PASSWORD") | indent 14 }}
+              - name: APP_DATABASE_DATASOURCE
+                value: {{- include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "$(APP_DATABASE_DBNAME)" "keywordValueConnectionString" true "userVariableName" "DBUSER" "passwordVariableName" "DBPASSWORD") }}
+              {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 14 }}
+            volumeMounts:
+            {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 14}}
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 14 }}
+          volumes:
+            {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 12 }}
+          restartPolicy: Never
+---
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{.Chart.Name}}-analytics-cron
+spec:
+  schedule: "0 0 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: {{.Chart.Name}}-analytics-cron
+            image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+            command: ["/app/policy-mgmt"]
+            args: ["analytics-job"]
+            envFrom:
+            - configMapRef:
+                name: {{.Chart.Name}}
+            env:
+              {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "events" "variableNames" ( dict "sslEnabled" "APP_EVENTS_FRAMEWORK_REDIS_SSL_ENABLED" "sslCACertPath" "APP_EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH")) | indent 14 }}
+              {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "events" "userVariableName" "APP_EVENTS_FRAMEWORK_REDIS_USERNAME" "passwordVariableName" "APP_EVENTS_FRAMEWORK_REDIS_PASSWORD" ) | indent 14 }}
+              {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "APP_DATABASE_USER" "passwordVariableName" "APP_DATABASE_PASSWORD") | indent 14 }}
+              - name: APP_DATABASE_DATASOURCE
+                value: {{- include "harnesscommon.dbconnectionv2.postgresConnection" (dict "ctx" $ "database" "$(APP_DATABASE_DBNAME)" "keywordValueConnectionString" true "userVariableName" "DBUSER" "passwordVariableName" "DBPASSWORD") }}
+              {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 14 }}
+            volumeMounts:
+            {{- include "harnesscommon.mountRenderedSecretsAsVolumeMounts" (dict "ctx" $) | indent 14}}
+            {{- include "harnesscommon.dbv4.sslVolumeMount" (dict "context" $ "dbType" "redis" "dbName" "events") | nindent 14 }}
+          volumes:
+            {{- include "harnesscommon.renderSecretsAsVolumes" (dict "ctx" $) | indent 12 }}
+            {{- include "harnesscommon.dbv4.sslVolume" (dict "context" $ "dbType" "redis" "dbName" "events") | indent 12 }}
+          restartPolicy: Never
+{{- end }}

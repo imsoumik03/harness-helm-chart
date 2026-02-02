@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ng-auth-ui
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ng-auth-ui.labels" . | nindent 4 }}
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  progressDeadlineSeconds: 600
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{.Values.maxSurge}}
+      maxUnavailable: {{.Values.maxUnavailable}}
+  selector:
+    matchLabels:
+      {{- include "ng-auth-ui.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.global.commonAnnotations }}
+          {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "ng-auth-ui.selectorLabels" . | nindent 8 }}
+        {{- if .Values.global.commonLabels }}
+        {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 8 }}
+        {{- end }}
+        {{- if .Values.podLabels }}
+        {{- include "harnesscommon.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{ include "ng-auth-ui.pullSecrets" . | nindent 6 }}
+      serviceAccountName: {{ include "ng-auth-ui.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+        {{ include "harnesscommon.initContainer.setupWritable" (dict "root" . "mounts" (list (dict "sourcePath" "/opt/ng-auth-ui" "destinationPath" "/shared/volume" "volumeName" "ng-auth-ui-opt") (dict "sourcePath" "/etc/nginx" "destinationPath" "/shared/nginx" "volumeName" "nginx-etc"))) | nindent 8 }}
+        {{- end }}
+      containers:
+      - name: ng-auth-ui
+        image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        env:
+          {{- include "harnesscommon.renderSecretsAsEnvironmentVariables" (dict "ctx" $) | indent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: {{.Values.service.targetport}}
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: {{.Values.service.targetport}}
+          initialDelaySeconds: 90
+          periodSeconds: 20
+          failureThreshold: 2
+        ports:
+        - name: ng-auth-ui-port
+          containerPort: {{.Values.service.targetport}}
+          protocol: "TCP"
+        envFrom:
+        - configMapRef:
+            name: ng-auth-ui
+        volumeMounts:
+        {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+          {{- include "harnesscommon.volumeMounts" (dict "mounts" (list (dict "name" "ng-auth-ui-opt" "mountPath" "/opt/ng-auth-ui") (dict "name" "nginx-etc" "mountPath" "/etc/nginx") (dict "name" "tmp" "mountPath" "/tmp") (dict "name" "var-log-nginx" "mountPath" "/var/log/nginx")) ) | nindent 12 }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - ng-auth-ui
+            topologyKey: "kubernetes.io/hostname"
+      {{- with .Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- if and .Values.securityContext .Values.securityContext.readOnlyRootFilesystem }}
+        {{- include "harnesscommon.volumes" (dict "volumes" (list (dict "name" "ng-auth-ui-opt" "type" "emptyDir") (dict "name" "nginx-etc" "type" "emptyDir") (dict "name" "tmp" "type" "emptyDir") (dict "name" "var-log-nginx" "type" "emptyDir")) ) | nindent 8 }}
+      {{- end }}

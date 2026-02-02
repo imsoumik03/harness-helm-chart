@@ -1,0 +1,628 @@
+# Default values for debezium-service
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry, imagePullSecrets
+# --global.imageRegistry Global Docker image registry
+# --global.imagePullSecrets Global Docker registry secret names as an array
+# --global.storageClass Global StorageClass for Persistent Volume(s)
+
+global:
+  autoscaling:
+    enabled: false
+  pdb:
+    create: false
+  istio:
+    # -- create virtualServices objects
+    enabled: false
+    enableRegexRoutes: false
+    # -- create gateway and use in virtualservice
+    gateway:
+      create: false
+    # -- if gateway not created, use specified gateway and host
+    virtualService:
+      pathPrefix: ""
+      gateways:
+      hosts:
+  ingress:
+    # -- create ingress objects
+    enabled: false
+    # -- set ingress object classname
+    className: harness
+    # -- set host of ingressObjects
+    hosts:
+      - my-host.example.org
+    # -- set tls for ingress objects
+    tls:
+      enabled: false
+      secretName: ''
+    # -- add annotations to ingress objects
+    objects:
+      annotations: {}
+    disableHostInIngress: false
+    pathPrefix: ""
+    pathType: ""
+  commonAnnotations: {}
+  commonLabels: {}
+  monitoring:
+    enabled: false
+    port: 8889
+    managedPlatform: ""
+    path: /metrics
+  database:
+    redis:
+      installed: true
+      protocol: "redis"
+      # --  provide default values if redis.installed is set to false
+      hosts:
+        - redis:6379
+      secretName: "redis-secret"
+      userKey: "redis-user"
+      passwordKey: "redis-password"
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    mongo:
+      installed: true
+      protocol: mongodb
+      # --  provide default values if mongo.installed is set to false
+      hosts:
+        - dummy.net
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  stackDriverLoggingEnabled: false
+  fileLogging:
+    enabled: false
+    logFilename: /opt/harness/logs/pod.log
+    maxFileSize: 50MB
+    maxBackupFileCount: 10
+    totalFileSizeCap: 1GB
+  appLogLevel: INFO
+  ssca:
+    enabled: false
+  waitForInitContainer:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: harness/helm-init-container
+      pullPolicy: IfNotPresent
+      tag: "latest"
+      digest: ""
+      imagePullSecrets: []
+  jfr:
+    enabled: false
+terminationMessage: {}
+terminationGracePeriodSeconds: "30"
+updateStrategy:
+  rollingUpdate:
+    maxSurge: 100%
+    maxUnavailable: 0
+  type: RollingUpdate
+progressDeadlineSeconds: "300"
+schedulerName: "default-scheduler"
+nameOverride: ""
+fullnameOverride: ""
+service:
+  annotations: {}
+  type: ClusterIP
+  port: 14552
+replicaCount: 1
+autoscaling:
+  enabled: false
+  targetCPU: ""
+  targetMemory: ""
+database:
+  mongo:
+    pmsharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    harness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    ngharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    idpharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    harnessgitops:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    harnesstemplate:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    # Keeping harnesstemplate entry so its backward compatible with the current configs.
+    # Will remove the old entry once we've rolled out the changes
+    templateharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+    componentharness:
+      enabled: false
+      protocol: ""
+      hosts: []
+      extraArgs: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              MONGO_USER: ""
+              MONGO_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                MONGO_USER:
+                  name: ""
+                  property: ""
+                MONGO_PASSWORD:
+                  name: ""
+                  property: ""
+  redis:
+    events:
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+    lock:
+      protocol: ""
+      hosts: []
+      secretName: ""
+      userKey: ""
+      passwordKey: ""
+      extraArgs: ""
+      ssl:
+        enabled: false
+        secret: ""
+        caFileKey: ""
+        trustStoreKey: ""
+        trustStorePasswordKey: ""
+      secrets:
+        kubernetesSecrets:
+          - secretName: ""
+            keys:
+              REDIS_USERNAME: ""
+              REDIS_PASSWORD: ""
+        secretManagement:
+          externalSecretsOperator:
+            - secretStore:
+                name: ""
+                kind: ""
+              remoteKeys:
+                REDIS_USERNAME:
+                  name: ""
+                  property: ""
+                REDIS_PASSWORD:
+                  name: ""
+                  property: ""
+mongoSecrets:
+  userName:
+    name: harness-secrets
+    key: mongodbUsername
+  password:
+image:
+  registry: docker.io
+  digest: ""
+  repository: harness/debezium-service-signed
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.21.6"
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "harness-default"
+probes:
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 14552
+    timeoutSeconds: 2
+    periodSeconds: 5
+    failureThreshold: 5
+    initialDelaySeconds: 60
+    successThreshold: 1
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: 14552
+    timeoutSeconds: 2
+    periodSeconds: 10
+    failureThreshold: 5
+    successThreshold: 1
+ingress:
+  objects:
+    - annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+        nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+        nginx.ingress.kubernetes.io/use-regex: "true"
+      paths:
+        - path: '{{ .Values.global.ingress.pathPrefix }}/debezium(/|$)(.*)'
+podAnnotations: {}
+podSecurityContext: {}
+virtualService:
+  annotations: {}
+  objects:
+    - pathMatchType: prefix
+      pathRewrite: "/"
+      paths:
+        - path: '{{ .Values.global.istio.virtualService.pathPrefix }}/debezium/'
+config:
+  EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  SNAPSHOT_EVENTS_FRAMEWORK_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events") }}'
+  EVENTS_FRAMEWORK_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  EVENTS_FRAMEWORK_SENTINEL_MASTER_NAME: 'harness-redis'
+  REDIS_LOCK_CONFIG_REDIS_URL: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  REDIS_LOCK_CONFIG_REDIS_SENTINELS: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "lock") }}'
+  REDIS_LOCK_CONFIG_USE_SENTINEL: '{{ .Values.global.database.redis.installed }}'
+  REDIS_LOCK_CONFIG_SENTINEL_MASTER_NAME: harness-redis
+  MANAGER_CLIENT_BASEURL: http://harness-manager:9090/api/
+  LOGGING_LEVEL: '{{ .Values.global.appLogLevel }}'
+  DEPLOY_MODE: KUBERNETES_ONPREM
+  MEMORY: '{{ .Values.java.memory }}'
+  STACK_DRIVER_LOGGING_ENABLED: '{{ .Values.global.stackDriverLoggingEnabled }}'
+  IS_ENABLED_PIPELINE: "false"
+  IS_ENABLED_APPLICATIONS: "false"
+  IS_ENABLED_PIPELINE_SNAPSHOT: "false"
+  IS_ENABLED_PLG: "false"
+  IS_ENABLED_IDP: "false"
+  IS_ENABLED_SSCA: '{{ .Values.global.ssca.enabled }}'
+  IS_ENABLED_GITOPS: "false"
+  IS_ENABLED_TEMPLATE: "false"
+  IS_ENABLED_TEMPLATE_SNAPSHOT: "false"
+  IS_ENABLED_COMPONENT: "false"
+  #TODO: Set these values when IS_ENABLED_IDP is set to true.
+  MONGO_DB_SSL_ENABLED_IDP: ""
+  COLLECTION_INCLUDE_LIST_IDP: ""
+  DEBEZIUM_NAME_IDP: ""
+  MONGODB_NAME_IDP: ""
+  DATABASE_INCLUDE_LIST_IDP: ""
+  REDIS_STREAM_SIZE_IDP: ""
+  SNAPSHOT_MODE_IDP: ""
+  MAX_QUEUE_SIZE_IDP: ""
+  MAX_BATCH_SIZE_IDP: ""
+  MAX_QUEUE_SIZE_IN_BYTES_IDP: ""
+  POLL_INTERVAL_MS_IDP: ""
+  MONGODB_CONNECTION_STRING_IDP: ""
+  #TODO: Set these values when IS_ENABLED_PIPELINE is set to true.
+  MONGODB_SSL_ENABLED_PIPELINE: ""
+  COLLECTION_INCLUDE_LIST_PIPELINE: ""
+  DEBEZIUM_NAME_PIPELINE: ""
+  MONGODB_NAME_PIPELINE: ""
+  DATABASE_INCLUDE_LIST_PIPELINE: ""
+  REDIS_STREAM_SIZE_PIPELINE: ""
+  SNAPSHOT_MODE_PIPELINE: ""
+  MAX_QUEUE_SIZE_PIPELINE: ""
+  MAX_BATCH_SIZE_PIPELINE: ""
+  MAX_QUEUE_SIZE_IN_BYTES_PIPELINE: ""
+  POLL_INTERVAL_MS_PIPELINE: ""
+  FIELD_EXCLUDE_LIST_PIPELINE: ""
+  MONGODB_CONNECTION_STRING_PIPELINE: ""
+  LIST_OF_ERROR_CODES_FOR_OFFSET_RESET: ""
+  #TODO: Set these values when global.ssca.enabled is set to true.
+  COLLECTION_INCLUDE_LIST_SSCA: ng-harness.instanceNG
+  DEBEZIUM_NAME_SSCA: ssca
+  MONGODB_NAME_SSCA: sscaMongo
+  DATABASE_INCLUDE_LIST_SSCA: ng-harness
+  REDIS_STREAM_SIZE_SSCA: "1000"
+  SNAPSHOT_MODE_SSCA: never
+  MAX_QUEUE_SIZE_SSCA: "8192"
+  MAX_BATCH_SIZE_SSCA: "2048"
+  MAX_QUEUE_SIZE_IN_BYTES_SSCA: "1000000000"
+  POLL_INTERVAL_MS_SSCA: "3000"
+  MONGODB_SSL_ENABLED_SSCA: "true"
+  #TODO: Set these values when IS_ENABLED_PLG is set to true.
+  MONGODB_SSL_ENABLED_PLG: "false"
+  COLLECTION_INCLUDE_LIST_PLG: ""
+  DEBEZIUM_NAME_PLG: plg
+  MONGODB_NAME_PLG: ""
+  DATABASE_INCLUDE_LIST_PLG: ""
+  REDIS_STREAM_SIZE_PLG: ""
+  SNAPSHOT_MODE_PLG: ""
+  MAX_QUEUE_SIZE_PLG: ""
+  MAX_BATCH_SIZE_PLG: ""
+  MAX_QUEUE_SIZE_IN_BYTES_PLG: ""
+  POLL_INTERVAL_MS_PLG: ""
+  #TODO: Set these values when IS_ENABLED_PIPELINE_SNAPSHOT is set to true.
+  SNAPSHOT_EVENTS_FRAMEWORK_ENV_NAMESPACE: ""
+  MONGODB_SSL_ENABLED_PIPELINE_SNAPSHOT: ""
+  DATABASE_INCLUDE_LIST_PIPELINE_SNAPSHOT: ""
+  COLLECTION_INCLUDE_LIST_PIPELINE_SNAPSHOT: ""
+  REDIS_STREAM_SIZE_PIPELINE_SNAPSHOT: ""
+  FIELD_EXCLUDE_LIST_PIPELINE_SNAPSHOT: ""
+  MONGODB_CONNECTION_STRING_PIPELINE_SNAPSHOT: ""
+  #TODO: Set these values when IS_ENABLED_TEMPLATE is set to true.
+  MONGODB_SSL_ENABLED_TEMPLATE: ""
+  COLLECTION_INCLUDE_LIST_TEMPLATE: ""
+  DEBEZIUM_NAME_TEMPLATE: ""
+  MONGODB_NAME_TEMPLATE: ""
+  DATABASE_INCLUDE_LIST_TEMPLATE: ""
+  REDIS_STREAM_SIZE_TEMPLATE: ""
+  SNAPSHOT_MODE_TEMPLATE: ""
+  MAX_QUEUE_SIZE_TEMPLATE: ""
+  MAX_BATCH_SIZE_TEMPLATE: ""
+  MAX_QUEUE_SIZE_IN_BYTES_TEMPLATE: ""
+  POLL_INTERVAL_MS_TEMPLATE: ""
+  FIELD_EXCLUDE_LIST_TEMPLATE: ""
+  MONGODB_CONNECTION_STRING_TEMPLATE: ""
+  #TODO: Set these values when IS_ENABLED_TEMPLATE_SNAPSHOT is set to true.
+  MONGODB_SSL_ENABLED_TEMPLATE_SNAPSHOT: ""
+  COLLECTION_INCLUDE_LIST_TEMPLATE_SNAPSHOT: ""
+  DEBEZIUM_NAME_TEMPLATE_SNAPSHOT: ""
+  MONGODB_NAME_TEMPLATE_SNAPSHOT: ""
+  DATABASE_INCLUDE_LIST_TEMPLATE_SNAPSHOT: ""
+  REDIS_STREAM_SIZE_TEMPLATE_SNAPSHOT: ""
+  SNAPSHOT_MODE_TEMPLATE_SNAPSHOT: ""
+  MAX_QUEUE_SIZE_TEMPLATE_SNAPSHOT: ""
+  MAX_BATCH_SIZE_TEMPLATE_SNAPSHOT: ""
+  MAX_QUEUE_SIZE_IN_BYTES_TEMPLATE_SNAPSHOT: ""
+  POLL_INTERVAL_MS_TEMPLATE_SNAPSHOT: ""
+  FIELD_EXCLUDE_LIST_TEMPLATE_SNAPSHOT: ""
+  MONGODB_CONNECTION_STRING_TEMPLATE_SNAPSHOT: ""
+  #TODO: Set these values when IS_ENABLED_APPLICATIONS is set to true.
+  MONGODB_SSL_ENABLED_APPLICATIONS: ""
+  COLLECTION_INCLUDE_LIST_APPLICATIONS: ""
+  DEBEZIUM_NAME_APPLICATIONS: ""
+  MONGODB_NAME_APPLICATIONS: ""
+  DATABASE_INCLUDE_LIST_APPLICATIONS: ""
+  REDIS_STREAM_SIZE_APPLICATIONS: ""
+  SNAPSHOT_MODE_APPLICATIONS: ""
+  MAX_QUEUE_SIZE_APPLICATIONS: ""
+  MAX_BATCH_SIZE_APPLICATIONS: ""
+  MAX_QUEUE_SIZE_IN_BYTES_APPLICATIONS: ""
+  POLL_INTERVAL_MS_APPLICATIONS: ""
+  FIELD_EXCLUDE_LIST_APPLICATIONS: ""
+  MONGODB_CONNECTION_STRING_APPLICATIONS: ""
+  #TODO: Set these values IS_ENABLED_COMPONENT is set to true.
+  COLLECTION_INCLUDE_LIST_COMPONENT: ""
+  DEBEZIUM_NAME_COMPONENT: ""
+  MONGODB_NAME_COMPONENT: ""
+  DATABASE_INCLUDE_LIST_COMPONENT: ""
+  REDIS_STREAM_SIZE_COMPONENT: ""
+  SNAPSHOT_MODE_COMPONENT: ""
+  MAX_QUEUE_SIZE_COMPONENT: ""
+  MAX_BATCH_SIZE_COMPONENT: ""
+  MAX_QUEUE_SIZE_IN_BYTES_COMPONENT: ""
+  POLL_INTERVAL_MS_COMPONENT: ""
+  MONGODB_SSL_ENABLED_COMPONENT: ""
+secrets:
+  default:
+    SOME_DEFAULT_SECRET: "DUMMY"
+  kubernetesSecrets:
+    - secretName: ""
+      keys:
+        SOME_DEFAULT_SECRET: ""
+  secretManagement:
+    externalSecretsOperator:
+      - secretStore:
+          name: ""
+          kind: ""
+        remoteKeys:
+          SOME_DEFAULT_SECRET:
+            name: ""
+            property: ""
+resources:
+  limits:
+    memory: 6Gi
+  requests:
+    cpu: 500m
+    memory: 6Gi
+rbac:
+  roles: []
+java:
+  memory: "4096m"
+pdb: {}

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "code-githa.name" . }}-nodes
+  namespace: {{ .Release.Namespace }}
+data:
+  {{- if .Values.NODES}}
+  nodes.yaml: {{- .Values.NODES | toYaml | nindent 2 }}
+  {{- else}}
+  nodes.yaml: |
+  {{- range $i:=until (int .Values.NODES_COUNT) }}
+    - id: {{ $i }}
+      grpc_address: dns:code-gitrpc-{{ $i }}.code-gitrpc.{{ $.Release.Namespace }}.svc.cluster.local:3001
+      grpc_secure: false
+      http_url: code-gitrpc-{{ $i }}.code-gitrpc.{{ $.Release.Namespace }}.svc.cluster.local:4001
+      version: 1
+      state: enabled
+  {{- end}}
+  {{- end}}

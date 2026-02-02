@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Values.name}}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "idp-admin.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.portName }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "idp-admin.selectorLabels" . | nindent 4 }}

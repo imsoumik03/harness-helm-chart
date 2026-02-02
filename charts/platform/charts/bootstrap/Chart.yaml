@@ -1,0 +1,23 @@
+apiVersion: v2
+appVersion: 1.16.0
+dependencies:
+- name: common
+  repository: https://charts.bitnami.com/bitnami
+  version: 2.x.x
+- name: database
+  repository: file://./database
+  version: 0.13.x
+- condition: harness-secrets.enabled
+  name: harness-secrets
+  repository: file://./secrets
+  version: 0.11.x
+- name: rbac
+  repository: file://./rbac
+  version: 0.9.x
+- name: networking
+  repository: file://./networking
+  version: 0.10.x
+description: A Helm chart for Kubernetes
+name: bootstrap
+type: application
+version: 1.62.0

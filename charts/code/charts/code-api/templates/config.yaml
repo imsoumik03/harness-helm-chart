@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "code-api.name" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- if .Values.global.commonLabels }}
+    {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.global.commonAnnotations }}
+  annotations: {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.global.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  {{- include "harnesscommon.tplvalues.render" ( dict "value" .Values.additionalConfig "context" $) | nindent 2}}
+  GITNESS_DEBUG: {{ .Values.config.CODE_DEBUG | quote }}
+  GITNESS_TRACE: {{ .Values.config.CODE_TRACE | quote }}
+  GITNESS_PROFILER_TYPE: {{ .Values.config.CODE_PROFILER_TYPE | quote }}
+  GITNESS_PROFILER_SERVICE_NAME: {{ .Values.config.CODE_PROFILER_SERVICE_NAME | quote }}
+  GITNESS_PUBLIC_RESOURCE_CREATION_ENABLED: {{ .Values.config.CODE_PUBLIC_RESOURCE_CREATION_ENABLED | quote }}
+  GITNESS_DATABASE_DRIVER: {{ .Values.config.CODE_DATABASE_DRIVER | quote }}
+
+  GITNESS_REDIS_ENDPOINT: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "code-api" "unsetProtocol" true) }}
+  GITNESS_REDIS_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote }}
+  GITNESS_REDIS_SENTINEL_ENDPOINT: {{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "code-api" "unsetProtocol" true) }}
+
+  HARNESS_REDIS_USE_SENTINEL: {{ .Values.global.database.redis.installed | quote}}
+  HARNESS_REDIS_SENTINEL_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  HARNESS_REDIS_ENDPOINT: '{{ include "harnesscommon.dbv3.redisConnection" (dict "ctx" $ "database" "events" "unsetProtocol" true) }}'
+  HARNESS_REDIS_CERT_PATH: {{ .Values.config.EVENTS_FRAMEWORK_REDIS_SSL_CA_PATH | quote }}
+  HARNESS_REDIS_NAMESPACE: {{ .Values.config.EVENTS_FRAMEWORK_REDIS_NAMESPACE | quote }}
+
+  GITNESS_URL_GIT:  {{ .Values.config.CODE_URL_GIT | default (printf "%s/code/git" .Values.global.loadbalancerURL) | quote }}
+  GITNESS_URL_BASE: '{{ .Values.global.loadbalancerURL }}'
+  GITNESS_URL_API: '{{ .Values.global.loadbalancerURL }}/gateway/code/api'
+  GITNESS_URL_UI: '{{ .Values.global.loadbalancerURL }}'
+  GITNESS_URL_INTERNAL: http://code-api.{{ .Release.Namespace }}.svc.cluster.local:80
+
+  GITNESS_BLOBSTORE_BUCKET: {{ .Values.config.CODE_BLOBSTORE_BUCKET | quote }}
+  GITNESS_BLOBSTORE_MAX_FILE_SIZE: {{ int .Values.config.CODE_BLOBSTORE_MAX_FILE_SIZE | printf "%d" | quote }}
+  GITNESS_BLOBSTORE_IMPERSONATION_LIFETIME: {{ .Values.config.CODE_BLOBSTORE_IMPERSONATION_LIFETIME | quote }}
+  GITNESS_BLOBSTORE_PROVIDER: {{ .Values.config.CODE_BLOBSTORE_PROVIDER | quote }}
+  GITNESS_BLOBSTORE_TARGET_PRINCIPAL: {{ .Values.config.CODE_BLOBSTORE_TARGET_PRINCIPAL| quote }}
+  GITNESS_INSTRUMENTATION_ENABLE: {{.Values.config.CODE_INSTRUMENTATION_ENABLE | quote}}
+
+  GITNESS_GRACEFUL_SHUTDOWN_TIME: {{ int .Values.config.CODE_SERVER_GRACEFUL_SHUTDOWN_TIME | printf "%ds" | quote }}
+
+  ENABLE_CDN: {{ .Values.config.CODE_ENABLE_CDN | quote }}
+
+  # Harness embedded values
+  HARNESS_SERVICES_ACL_IGNORE: {{ .Values.config.CODE_HARNESS_SERVICES_ACL_IGNORE | quote }}
+  HARNESS_SERVICES_ACL_CLIENT_JWT_IDENTITY: {{ .Values.config.CODE_HARNESS_SERVICES_ACL_CLIENT_JWT_IDENTITY | quote }} 
+  HARNESS_SERVICES_OPA_IGNORE: {{ .Values.config.CODE_HARNESS_SERVICES_OPA_IGNORE | quote }}
+  
+  # Artifact Registry values
+  GITNESS_URL_REGISTRY: {{ .Values.config.REGISTRY_URL | quote }}
+
+  # serve uiv2 only if codev2 is enabled
+  {{- if .Values.experimental.codev2Enabled }}
+  HARNESS_DEVELOPMENT_UIV2_SOURCE: "/app/uiv2"
+  {{ end }}
