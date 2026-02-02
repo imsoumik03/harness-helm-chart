@@ -59,7 +59,7 @@ spec:
         {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cf" "userVariableName" "CF_REDIS_USERNAME" "passwordVariableName" "CF_REDIS_PASSWORD" ) | indent 8 }}
         {{- include "harnesscommon.dbv4.sslEnv" (dict "context" $ "dbType" "redis" "dbName" "cfmetrics" "variableNames" ( dict "sslEnabled" "METRICS_REDIS_USE_TLS" "sslCATrustStorePath" "METRICS_REDIS_TLS_PATH")) | indent 8 }}
         {{- include "harnesscommon.dbv3.redisEnv" (dict "ctx" $ "database" "cfmetrics" "userVariableName" "METRICS_REDIS_USERNAME" "passwordVariableName" "METRICS_REDIS_PASSWORD" ) | indent 8 }}
-        {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "ANALYTICS_DB_USER" "passwordVariableName" "ANALYTICS_DB_PASS" "sslModeVariableName" true) | indent 8 }}
+        {{- include "harnesscommon.dbconnectionv2.timescaleEnv" (dict "ctx" $ "userVariableName" "ANALYTICS_DB_USER" "passwordVariableName" "ANALYTICS_DB_PASS") | indent 8 }}
         {{- if .Values.global.cfPostgresEnabled }}
         {{- include "harnesscommon.dbconnectionv2.postgresEnv" (dict "ctx" $ "userVariableName" "DB_USER" "passwordVariableName" "DB_PASS" "sslModeVariableName" "SSL_MODE" "handleSSLModeDisable" true) | indent 8 }}
         {{- else }}
